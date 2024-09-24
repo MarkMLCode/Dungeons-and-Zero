@@ -1,0 +1,40 @@
+name,dice,type,avg_dmg,alt_names
+Club,1d4,bludgeoning,2.5,Bat;Baton;Sap;Hammer
+Dagger,1d4,piercing,2.5,Knife;Shiv
+Greatclub,1d8,bludgeoning,4.5,Sledgehammer;Sledge hammer
+Handaxe,1d6,slashing,3.5,Meat Cleaver;Tomahawk
+Javelin,1d6,piercing,3.5,Pilum
+Light hammer,1d4,bludgeoning,2.5,
+Mace,1d6,bludgeoning,3.5,
+Quarterstaff,1d8,bludgeoning,4.5,Bo
+Sickle,1d4,slashing,2.5,
+Spear,1d8,piercing,4.5,Partisan
+Light Crossbow,1d8,piercing,4.5,"Crossbow, Light"
+Dart,1d4,piercing,2.5,
+Shortbow,1d6,piercing,3.5,
+Sling,1d4,bludgeoning,2.5,
+Battleaxe,1d8,slashing,4.5,
+Flail,1d8,bludgeoning,4.5,
+Glaive,1d10,slashing,5.5,Warglaive
+Greataxe,1d12,slashing,6.5,
+Greatsword,2d6,slashing,7,Claymore;Flambard;Zweihander;Flamberge
+Halberd,1d10,slashing,5.5,Bardiche;Scythe;Pollaxe
+Lance,1d12,piercing,6.5,
+Longsword,1d8,slashing,4.5,Sword;Bastard Sword;Crude Sword;Rusty Sword
+Maul,2d6,bludgeoning,7,
+Morningstar,1d8,piercing,4.5,
+Pike,1d10,piercing,5.5,Longspear
+Rapier,1d8,piercing,4.5,
+Scimitar,1d6,slashing,3.5,Falchion;Machete
+Cutlass,1d8,slashing,4.5,Sabre
+Shortsword,1d6,piercing,3.5,Gladius;Side Sword;Small Sword
+Trident,1d8,piercing,4.5,
+War pick,1d8,piercing,4.5,Pickaxe
+Warhammer,1d10,bludgeoning,5.5,Flanged Mace
+Whip,1d4,slashing,2.5,
+Blowgun,1,piercing,1,
+Hand Crossbow,1d6,piercing,3.5,"Crossbow, Hand"
+Heavy Crossbow,1d10,piercing,5.5,"Crossbow, Heavy"
+Longbow,1d8,piercing,4.5,Composite Bow
+Pistol,1d10,piercing,5.5,
+Musket,1d12,piercing,6.5,

@@ -1,0 +1,14 @@
+/venv/
+/backgrounds/
+/blacklist/
+/current_convo/
+/current_convo_debug/
+/current_story_debug/
+/current_stream_messages/
+/current_text_obs/
+/dnd_characters_images
+/generated_sounds/
+/moderation/
+/music/
+/sound_effects/
+/tts_queue_archive/

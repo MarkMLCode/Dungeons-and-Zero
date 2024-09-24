@@ -1,0 +1,13 @@
+**/__pycache__/
+
+# Ignore all directories
+/build/
+/vtai_utils.egg-info/
+/current_convo_debug/
+
+alarm.py
+google_drive.py
+livestream.py
+mp_media_player.py
+obs.py
+recorder.py

@@ -1,0 +1,19 @@
+{
+    "character_name": null,
+    "scenario_id": null,
+    "use_generic_scenario": null,
+    "dnd_input_mode": true,
+    "allow_chat_msg_dnd": true,
+    "check_chat_max_every_x_turns": 1,
+    "set_secret_info_memory_on_turn": 15,
+    "start_concluding_story_on_turn": 60,
+    "speak_to_chat_after_gameover_time": 210,
+    "minimum_msg_length_before_repeat_for_roll": 300,
+    "max_unrelated_or_refused_nb_retry": 2,
+    "nb_chat_msg_duo_included_after_game_discussion": 1,
+    "max_allies": 3,
+    "max_opponents": 4,
+    "max_additional_opponents": 5,
+    "win_count": 23,
+    "lose_count": 18
+}

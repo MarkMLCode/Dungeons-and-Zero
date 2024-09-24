@@ -1,0 +1,8 @@
+colorama
+typer
+requests
+inflect
+pyphen
+tiktoken
+numpy
+pandas

@@ -1,0 +1,77 @@
+level,domain,name,id
+1,death,False Life,death+False Life
+1,death,Ray of Sickness,death+Ray of Sickness
+1,life,Bless,life+Bless
+1,life,Cure Wounds,life+Cure Wounds
+1,light,Burning Hands,light+Burning Hands
+1,light,Faerie Fire,light+Faerie Fire
+1,nature,Animal Friendship,nature+Animal Friendship
+1,nature,Speak with Animals,nature+Speak with Animals
+1,battle smith,Heroism,battle smith+Heroism
+1,battle smith,Shield,battle smith+Shield
+1,guardian,Protection from Evil and Good,guardian+Protection from Evil and Good
+1,guardian,Sanctuary,guardian+Sanctuary
+1,conquest,Armor of Agathys,conquest+Armor of Agathys
+1,conquest,Command,conquest+Command
+2,death,Blindness/Deafness,death+Blindness/Deafness
+2,death,Ray of Enfeeblement,death+Ray of Enfeeblement
+2,life,Lesser Restoration,life+Lesser Restoration
+2,life,Spiritual Weapon,life+Spiritual Weapon
+2,light,Flaming Sphere,light+Flaming Sphere
+2,light,Scorching Ray,light+Scorching Ray
+2,nature,Barkskin,nature+Barkskin
+2,nature,Spike Growth,nature+Spike Growth
+2,battle smith,Branding Smite,battle smith+Branding Smite
+2,battle smith,Warding Bond,battle smith+Warding Bond
+2,guardian,Lesser Restoration,guardian+Lesser Restoration
+2,guardian,Zone of Truth,guardian+Zone of Truth
+2,conquest,Hold Person,conquest+Hold Person
+2,conquest,Spiritual Weapon,conquest+Spiritual Weapon
+3,death,Animate Dead,death+Animate Dead
+3,death,Vampiric Touch,death+Vampiric Touch
+3,life,Beacon of Hope,life+Beacon of Hope
+3,life,Revivify,life+Revivify
+3,light,Daylight,light+Daylight
+3,light,Fireball,light+Fireball
+3,nature,Plant Growth,nature+Plant Growth
+3,nature,Wind Wall,nature+Wind Wall
+3,battle smith,Aura of Vitality,battle smith+Aura of Vitality
+3,battle smith,Conjure Barrage,battle smith+Conjure Barrage
+3,guardian,Beacon of Hope,guardian+Beacon of Hope
+3,guardian,Dispel Magic,guardian+Dispel Magic
+3,conquest,Bestow Curse,conquest+Bestow Curse
+3,conquest,Fear,conquest+Fear
+4,death,Blight,death+Blight
+4,death,Death Ward,death+Death Ward
+4,life,Death Ward,life+Death Ward
+4,life,Guardian of Faith,life+Guardian of Faith
+4,light,Guardian of Faith,light+Guardian of Faith
+4,light,Wall of Fire,light+Wall of Fire
+4,nature,Dominate Beast,nature+Dominate Beast
+4,nature,Grasping Vine,nature+Grasping Vine
+4,battle smith,Aura of Purity,battle smith+Aura of Purity
+4,battle smith,Fire Shield,battle smith+Fire Shield
+4,guardian,Freedom of Movement,guardian+Freedom of Movement
+4,guardian,Guardian of Faith,guardian+Guardian of Faith
+4,conquest,Dominate Beast,conquest+Dominate Beast
+4,conquest,Stoneskin,conquest+Stoneskin
+5,death,Antilife Shell,death+Antilife Shell
+5,death,Cloudkill,death+Cloudkill
+5,life,Commune,life+Commune
+5,life,Mass Cure Wounds,life+Mass Cure Wounds
+5,life,Raise Dead,life+Raise Dead
+5,light,Dawn,light+Dawn
+5,light,Flame Strike,light+Flame Strike
+5,light,Wall of Light,light+Wall of Light
+5,nature,Insect Plague,nature+Insect Plague
+5,nature,Tree Stride,nature+Tree Stride
+5,nature,Wrath Of Nature,nature+Wrath Of Nature
+5,battle smith,Banishing Smite,battle smith+Banishing Smite
+5,battle smith,Mass Cure Wounds,battle smith+Mass Cure Wounds
+5,guardian,Commune,guardian+Commune
+5,guardian,Flame Strike,guardian+Flame Strike
+5,conquest,Cloudkill,conquest+Cloudkill
+5,conquest,Dominate Person,conquest+Dominate Person
+6,death,Circle of Death,death+Circle of Death
+6,light,Sunbeam,light+Sunbeam
+6,life,Globe of Invulnerability,life+Globe of Invulnerability

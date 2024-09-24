@@ -1,0 +1,421 @@
+{
+	"location": "the Kingdom of Darion",
+	"genre": "High Fantasy Adventure",
+	"characters_with_scenarios":[
+		{
+			"name": "Ruby Wayfarer",
+			"summary": "Ruby Wayfarer, the Lucky Adventurer",
+			"description": "You are Ruby Wayfarer, an adventurous spirit known for getting in and out of trouble with ease. You always carry a worn-out map, covered in hastily scribbled notes about new places to explore. With your trusty sword at your side, you eagerly embrace each new quest, confident that lady luck will be on your side.",
+			"physical_description": "You have tousled, auburn hair, and sharp, inquisitive green eyes.",
+			"personality": "To say you're energetic would be an understatement. Your zest for life is unparalleled. You approach every challenge, no matter how daunting, with a beaming smile and a can-do attitude. No mountain is too high and no dragon too fierce for your indefatigable spirit. You're no passifist, you're not afraid to resort to violence for self-defense.",
+			"alignment": "NG",
+			"location_category": "tavern",
+			"proficiencies": "You have no magical ability, but you are adept with a sword and you possess an assortment of useful items, magical or mundane, that you found in your adventures. Lady Luck often favors you, stacking the deck in your favor.",
+			"hair_preset": "auburn",
+			"level": 8,
+			"class": "Fighter",
+			"specialization": "Champion",
+			"race": "human",
+			"hit_die": 10,
+			"AC": 18,
+			"stats": {
+				"str": 18,
+				"dex": 14,
+				"con": 12,
+				"int": 8,
+				"wis": 12,
+				"cha": 14
+			},
+			"saving_throws": [
+				"str",
+				"con"
+			],
+			"skills": [
+				"athletics",
+				"survival",
+				"perception",
+				"persuasion",
+				"intimidation",
+				"stealth"
+			],
+			"available_misc_objects": "non-magical items",
+			"available_misc_objects_json_name": "is_magic_item",
+			"available_misc_objects_is_reversed": true,
+			"talents": ["fighting style (dueling)", "second wind", "action surge", "remarkable athlete", "improved critical", "extra attack", "lucky", "blade mastery", "skill expert (perception)", "ability score improvement (str)"],
+			"note": "2 skill class, 2 skill background and 1 skill expert, 1 human = 6 skills. Skill expert = +1 dex. She isn't wearing her armor in the picture.",
+			"inventory": ["Trusty longsword (Equipped, weapon+1)", "Breastplate (Equipped)", "worn-out map", "Bag of useful items"],
+			"weapon_name": "Longsword",
+			"base_weapon_damage": "1d8",
+			"starting_gold": "50d4",
+			"scenarios": [
+			 	{
+					"id": 1,
+					"title": "The Amulet of Ages",
+					"genre": "Epic Treasure Quest",
+					"scenario": "Unfurling your worn-out map, you spot a location marked with an 'X'. It's the Forgotten Catacombs, a place whispered about in hushed tones among treasure hunters and scholars. Legends speak of the 'Amulet of Ages', an ancient artifact said to possess time-manipulating abilities, hidden deep within these catacombs.",
+					"main_quests": ["Journey into the Forgotten Catacombs", "retrieve the 'Amulet of Ages'"],
+					"main_quests_full": ["Journey into the Forgotten Catacombs", "retrieve the 'Amulet of Ages' from the Forgotten Catacombs"],
+					"secret_info": "The Amulet of Ages holds a perilous power: it can randomly teleport its user to an unknown point in time, potentially trapping them in a distant era or bringing them face-to-face with a future yet to unfold.",
+					"force_quest_order": true
+			 	},
+				{
+					"id": 2,
+					"title": "The Night's Terror",
+					"genre": "Urban Monster Hunt",
+					"scenario": "In the lively city of Zephyra, rumors swirl of a shadowy creature dubbed the Night's Terror. While others cower in fear, you see an opportunity for a new adventure. With the city council promising a reward, you're all set to turn this mystery on its head!",
+					"main_quests": ["Discover the truth behind the Night's Terror", "rid the city of it"],
+					"main_quests_full": ["Discover the true identity of the Night's Terror", "rid the city of the Night's Terror"],
+					"secret_info": "Under the dark cloak of night, the Night's Terror is none other than the city's prince, transformed by the dark spells of the dark wizard Grikal.",
+					"location": "The vibrant city-state of Zephyra"
+				},
+				{
+					"id": 3,
+					"title": "Bazaar of the Baffling Bottles",
+					"genre": "Mysterious Market Quest",
+					"scenario": "In the bustling city of Windwhisk, you come across a peculiar market stall filled with bottles of all shapes and sizes. Each bottle seems to contain a different world, with swirling mists, miniature landscapes, or tiny creatures moving inside. The merchant offers you a chance to enter one of the bottles for a unique adventure.",
+					"main_quests": ["Embark on a journey within one of the magical bottle", "then find a way to escape it and go back to your world"],
+					"main_quests_full": ["Embark on a journey within one of the magical bottle", "find a way to escape the bottle and go back to your world"],
+					"secret_info": "The same bottle that was used to enter the miniature world is found at the end of the journey. Entering the bottle again will return you to the real world.",
+					"location_category": "marketplace",
+					"force_quest_order": true
+				},
+				{
+					"id": 4,
+					"title": "Ferngully's Fractured Jewel",
+					"genre": "Village Feud Drama",
+					"scenario": "In the tranquil village of Ferngully, you find yourself embroiled in a feud between the Oakenhearts and the Streamwhispers, two families clashing over the 'Sapphire of Seasons', an ancestral artifact claimed by both. This coveted relic, said to control the elements, is said to lie at the bottom of the village well. Amid rising tensions, each family fiercely endeavors to block the other from retrieving it.",
+					"main_quests": ["Retrieve the 'Sapphire of Seasons' from the well", "solve the feud between the Oakenhearts and the Streamwhispers"],
+					"main_quests_full": ["Retrieve the 'Sapphire of Seasons' from the feuding village's well", "Solve the feud between the Oakenhearts and the Streamwhispers"],
+					"secret_info": "The 'Sapphire of Seasons' has lost its power and is just a normal jewel now.",
+					"location_category": "village"
+				},
+				{
+					"id": 5,
+					"title": "Quest for the One Ring",
+					"genre": "Epic Fantasy Journey",
+					"scenario": "In the tranquil city of Bree, you come into possession of the One Ring. This ring is artifact of immense power and malice, forged by the Dark Lord Sauron to dominate all of Middle-earth. The fate of many rests in your hands. You must embark on a perilous journey across vast and treacherous lands to reach the fiery chasms of Mount Doom, the only place where the ring can be destroyed.",
+					"main_quests": ["Form an alliance with diverse peoples of Middle-earth", "traverse the Mines of Moria", "seek counsel in the elven realm of Lothlórien", "cross the dark plains of Mordor", "ascend the slopes of Mount Doom", "cast the One Ring into the fires from whence it came"],
+					"main_quests_full": ["Form an alliance with the diverse peoples of Middle-earth", "traverse the treacherous Mines of Moria", "seek wisdom and aid in the ethereal elven realm of Lothlórien", "cross the dark plains of Mordor", "ascend the perilous slopes of Mount Doom", "cast the One Ring into the fiery chasm from whence it came"],
+					"secret_info": "The One Ring has a will of its own, seeking always to return to its master, Sauron. Its presence tempts and corrupts even the most stalwart of hearts, making the journey fraught with internal strife and betrayal.",
+					"location_category": "village",
+					"force_quest_order": true
+				}
+			]
+		},
+		{
+			"name": "Kiara Frostblade",
+			"summary": "Kiara Frostblade, Queen of the North",
+			"description": "You are Kiara Frostblade, chieftain of the northern clans. You bear the Frostblade, a cursed greatsword handed down through generations, which grants you protection from ice and snow. Although you usually manage to tame its malevolent powers, there are moments where your control falters. You are then plunged into a wild frenzy until every foe within sight is vanquished.",
+			"physical_description": "Your towering stature commands attention, lending an imposing air to your presence. The vibrant orange of your hair stands out starkly against the icy backdrops of your homeland. Wrapped in protective furs, your fierce blue eyes reflect an indomitable spirit.",
+			"personality": "Your bold spirit knows no bounds, charging headfirst into the fray with a fearlessness that defines your very essence. A dormant inferno smolders within you, ready to ignite at the right moment. But even in the heat of battle, you try to keep some semblance of control against the tempest within, lest it consume you in a frenzy beyond recall.",
+			"proficiencies": "The Frostblade shields you from the icy chill of the northern lands. However, it doesn't allow you to control ice and snow. This power is a double-edged sword, cursed to thrust you into an uncontrollable rage whenever your grip on its power slips. The blade's thirst is then quenched, but only temporarily. You never willingly surrender to the blade's dark influence, even when fighting recklessly.",
+			"roll_clarifications_unused": "Attempts to control ice and snow counts as using a magic item.",
+			"notes_desc": "Kiara is 6 ft 4 (she has a form a giganticism). Her sword is around 52 inches long (4 ft 4 inches, 2/3 of her height), around the size of a claymore. She can use it with 1 hand if needs be, but she usually uses both hands to wield it. It's pretty unwieldy and not very sharp, but she puts so much force behind her strikes that it doesn't really matter.",
+			"hair_preset": "orange",
+			"location": "The frozen north",
+			"location_category": "snow",
+			"alignment": "CN",
+			"level": 8,
+			"class": "Barbarian",
+			"specialization": "Berserker",
+			"race": "human",
+			"hit_die": 12,
+			"AC": 15,
+			"stats": {
+				"str": 20,
+				"dex": 12,
+				"con": 14,
+				"int": 8,
+				"wis": 10,
+				"cha": 14
+			},
+			"saving_throws": [
+				"str",
+				"con"
+			],
+			"skills": [
+				"leadership",
+				"intimidation",
+				"persuasion",
+				"athletics",
+				"survival",
+				"perception"
+			],
+			"inventory": ["Cursed Frostblade (Equipped, weapon+1)", "Breastplate (Equipped)"],
+			"weapon_name": "Greatsword",
+			"base_weapon_damage": "2d6",
+			"daily_max_rage_amount": 4,
+			"talents": ["rage", "frenzy", "frostblade's frenzy", "fast movement", "reckless attack", "danger sense", "extra attack", "resistance (cold)", "great weapon master", "ability score improvement (str)", "ability score improvement (str)"],
+			"notes": "6 skills (2 class, 2 background, 1 human). Reason short rest can remove exhaustion:  Frenzy is magical in nature, not her choice, so not exactly the same as path of the berserker. Also, wielding the frostblade might allow her to more quickly recover after a frenzy. + 1 rage per day (5 instead of 4) because rage auto at start of battle + reckless attack always on. Frostblade = grants cold resistance.", 
+			"starting_gold": "60d4",
+			"difficulty_level": "hard",
+			"scenarios": [
+				{
+					"id": 1,
+					"title": "Rebellion of Frost",
+					"genre": "Epic Fantasy",
+					"scenario": "Ragnar Stormbringer, a rebellious leader from within your own ranks, has fomented a rebellion and is advancing with an army towards your stronghold. You must rally the loyal clans, drive off the rebellion's main army and defeat Ragnar Stormbringer in combat.",
+					"main_quests": ["Rally the loyal clans", "drive off the rebellion's main army", "defeat Ragnar Stormbringer in combat"],
+					"secret_info": "The rebellious leader is not acting solely out of a desire for power but is being manipulated by his advisor. The advisor, having glimpsed the future, fears that Kiara will soon succumb to the Frostblade's corruptive influence, causing massive strife for her people.",
+					"main_antagonist": "Ragnar Stormbringer (rebellious leader)",
+					"location_category": "snowy village"
+				},
+				{
+				  "id": 2,
+				  "title": "Dragon's Winter Wrath",
+				  "genre": "Adventure Fantasy",
+				  "scenario": "Zandrax, a young White Dragon, has awakened from its latest slumber and is now terrorizing your land. As the Queen of the North, you must track down this beast amidst a fierce winter storm and put an end to its reign of terror.",
+				  "main_quests": ["Track down the awakened White Dragon", "put an end to its terror"],
+				  "main_quests_full": ["Track down the awakened White Dragon", "put an end to the awakened White Dragon's terror"],
+				  "secret_info": "The White Dragon is not inherently violent but has been driven mad by a magical artifact embedded in its hide.",
+				  "main_antagonist": "Zandrax (Young White Dragon)",
+				  "force_quest_order": true
+				},
+				{
+				  "id": 3,
+				  "title": "Reclaiming the Frostblade",
+				  "genre": "Heroic Fantasy",
+				  "scenario": "The Frostblade, your formidable cursed weapon, has been stolen by a belligerent warlord. Your objective is to recover the blade, cognizant of the fact that the cursed weapon has likely already begun to warp the warlord's mind. You need to find the hideout of the marauding thieves and reclaim your cursed weapon.",
+				  "main_quests": ["Find the hideout of the marauding thieves", "recover the Frostblade from the warlord"],
+				  "main_quests_full": ["Find the hideout of the marauding thieves", "recover the Frostblade from the warlord of the marauding thieves"],
+				  "secret_info": "The warlord is actually Kiara's long-lost sibling, who took the Frostblade to protect Kiara from its curse.",
+				  "inventory": ["Greatsword (Equipped)"]
+				},
+				{
+				  "id": 4,
+				  "title": "Quest for the Ice Crystal",
+				  "genre": "High Fantasy",
+				  "scenario": "You hear rumors that someone has located the legendary Ice Crystal, a source of immense power rumored to lie within the Icy Peaks. You must use your superior knowledge of the harsh icy terrain and your frost-enhanced weaponry to thwart their attempts to seize the Ice Crystal.",
+				  "main_quests": ["Find the location of the legendary Ice Crystal", "thwart the attempts of whoever is trying to seize it"],
+				  "main_quests_full": ["Find the location of the legendary Ice Crystal", "thwart the attempts of whoever is trying to seize the legendary Ice Crystal"],
+				  "secret_info": "The Ice Crystal can only be used by someone with pure intentions and will freeze anyone who touches it with evil in their heart. Once the crystal is reached, it is revealed that Dark wizard Grikal was the one who located it, and that he has been frozen in place due to his evil intentions.",
+				  "location_category": "snowy mountain"
+				}
+			]
+		},
+		{
+			"name": "Raven Shadowswift",
+			"summary": "Raven Shadowswift, the Shadow Thief",
+			"description": "You are Raven Shadowswift, the Shadow Thief, known only by those who delve into the city's underworld. Your agile and lean figure moves like a whisper in the night, unseen and unheard. Your striking cat-like amber eyes seem to glow in the darkness. You possess an arsenal of discreet tools and gadgets, meticulously crafted for the arts of thievery and subterfuge.",
+			"physical_description": "Short, choppy, raven hair allows for minimal hindrance during your stealthy operations. The cloak you don around your form aids your blend into the shadows.",
+			"personality": "You are an enigma, shrouded in secrecy and draped in mystery. Your quiet and observant nature makes you an exceptional listener and an unparalleled strategist in the city's underworld. You prefer to be a silent specter in the background, moving unseen and leaving no trace behind. Despite the murky nature of your job, you make a point never to take from the less fortunate and always share a portion of your gains with the community.",
+			"hair_preset": "black_raven",
+			"alignment": "CG",
+			"location_category": "city",
+			"proficiencies": "While you possess no magical abilities, your expertise with daggers is unparalleled, both in melee combat and when thrown from a distance. Additionally, you have a collection of specialized tools and gadgets designed for thievery and subterfuge. Your ability to blend into shadows is exceptional, allowing you to remain concealed even in minimal cover. Lastly, your cat-like eyes enable you to perceive in darkness as clearly as if it was daylight.",
+			"level": 8,
+			"class": "Rogue",
+			"specialization": "Thief",
+			"race": "human?",
+			"hit_die": 8,
+			"AC": 17,
+			"stats": {
+				"str": 8,
+				"dex": 18,
+				"con": 12,
+				"int": 10,
+				"wis": 14,
+				"cha": 14
+			},
+			"saving_throws": [
+				"dex",
+				"int"
+			],
+			"skills": [
+				"thieves tools",
+				"stealth",
+				"athletics",
+				"acrobatics",
+				"sleight of hand",
+				"perception",
+				"persuasion"
+			],
+			"special_abilities": [
+				"Use gadget"
+			],
+			"special_ability_skill": "sleight of hand",
+			"special_ability_stat": "dex",
+			"available_misc_objects": "specialized tools and gadgets",
+			"available_misc_objects_json_name": "is_specialized_tool_or_gadget",
+			"attack_ability": "dex",
+			"talents": ["darkvision", "evasion", "sneak attack", "uncanny dodge", "fast hands", "expertise (thieves tools)", "expertise (stealth)", "expertise (sleight of hand)", "expertise (perception)", "dual wield", "custom lineage", "fighting initiate", "fighting style (Two-Weapon Fighting)", "skulker", "ability score improvement (dex)"],
+			"notes": "4 skill class, 2 skill background = 6 skills, thieves tool don't count. Note : human = darkvision. Note : She is not wearing her armor in the picture.",
+			"inventory": ["Daggers (Equipped)", "Studded Leather (Equipped, armor+1)", "Thieves tools", "Saps", "Bag containing various gadgets"],
+			"weapon_name": "Dagger",
+			"base_weapon_damage": "1d4",
+			"starting_gold": "40d8",
+			"scenarios": [
+			  {
+				"id": 1,
+				"title": "Blue Moon Burglary",
+				"genre": "Stealthy Urban Heist",
+				"scenario": "A rich aristocrat, Lord Varric, is flaunting his new collection of precious star sapphires, and you can't resist such a tempting target. You must bypass the mansion's high-security systems and enchanted traps, steal the jewels without getting caught, and escape into the night.",
+				"main_quests": ["Steal Lord Varric's precious star sapphires without getting caught", "escape the mansion without leaving a trace"],
+				"secret_info": "Varric owns 9 genuine star sapphires, while most others you come across are fakes, meant to serve as decoys in the event of a heist.",
+				"main_antagonist": "Lord Varric (rich aristocrat)",
+				"force_quest_order": true
+			  },
+			  {
+				"id": 2,
+				"title": "Heist in Grikal's Fortress",
+				"genre": "Stealthy infiltration Heist",
+				"scenario": "The Dark Wizard Grikal possesses an amulet, the Eye of Elera, said to grant immense power. Sensing an opportunity, you decide to steal it. You must infiltrate Grikal's guarded fortress hidden in the heart of the haunted Mourning Woods. Then, you must navigate through his enchantments and devious magical traps, snatch the amulet, and evade his wrathful pursuit.",
+				"main_quests": ["Steal the Eye of Elayra", "successfully escape Grikal's fortress"],
+				"secret_info": "The amulet is sentient and has a will of its own. It tries to manipulate you into returning it to Grikal, its rightful owner.",
+				"main_antagonist": "Grikal (Dark Wizard)",
+				"force_quest_order": true
+			  },
+			  {
+				"id": 3,
+				"title": "Framed in Moonlight",
+				"genre": "Mystery Thriller",
+				"scenario": "You are framed for the theft of the Sacred Moonstone from the city's Grand Cathedral, a crime you didn't commit. This causes the city guards to intensify their efforts to capture you, bringing unwanted attention to the city's underworld. You must find the real culprit and retrieve the stone to clear your name.",
+				"main_quests": ["Uncover the real culprit behind the theft of the Sacred Moonstone", "return it to clear your name"],
+				"main_quests_full": ["Uncover the real culprit behind the theft of the Sacred Moonstone", "return the Sacred Moonstone to clear your name"],
+				"secret_info": "The Moonstone's theft is part of a grander conspiracy aimed at inciting civil unrest."
+			  },
+			  {
+				"id": 4,
+				"title": "Hawk Hunt",
+				"genre": "Urban Adventure Thriller",
+				"scenario": "A thief called 'Hawk' has surfaced in the city, stealing recklessly and driving the city into a panic. This surge in criminal activity has attracted unwanted attention from law enforcement, complicating your operations. You need to determine Hawk's real identity, confront them and teach them a lesson.",
+				"main_quests": ["Determine Hawk's real identity", "teach them a lesson"],
+				"main_quests_full": ["Determine Hawk's real identity", "teach Hawk a lesson"],
+				"secret_info": "Hawk is not acting alone - they are the pawn of a larger, hidden force in the underworld.",
+				"main_antagonist": "Hawk (reckless thief)"
+			  }
+			]
+		},
+		{
+			"name": "Seraphina Starweaver",
+			"summary": "Seraphina Starweaver, the Court Wizard",
+			"description": "You are Seraphina Starweaver, the esteemed Court Wizard. As a trusted advisor to the royal family for generations, your authority within the royal court is unquestioned. Having mastered warding spells and protective magic, you use those powers to safeguard both yourself and the kingdom from any threats.",
+			"physical_description": "Your light purple hair flows like a shimmering cascade, are accentuated by your piercing violet eyes. Thanks to your half-elven blood, you possess an ageless beauty that belies your wisdom and experience.In your hand, you wield a magical staff, crowned with a massive amethyst that acts as a potent catalyst for your formidable spells.",
+			"personality": "Knowledge and mystery seep from your very being. You're not just a mere wizard; you're the embodiment of raw magical talent. Not everyone is worthy of your wisdom or time. Those who have the privilege of your counsel are keenly aware of its value, for it is backed by your unmatched intellect. Your sense of responsibility towards the kingdom is strong, but the kingdom should know its luck in having you safeguard its interests.",
+			"proficiencies": "Thanks to your elven heritage, you have superior vision in dark and dim conditions. You are a wizard, allowing you to use arcane magic. You specialize in abjuration magic, focusing on protective spells and wards, which also grants you resistance to force damage. Every morning, you can cast a protective ward on yourself that absorbs a set amount of damage before breaking. Once this ward is broken, you must wait until the following day to cast it again.",
+			"hair_preset": "light_purple",
+			"alignment": "TN",
+			"location": "High Haven, the Royal Capital of the Kingdom of Darion",
+			"location_category": "royal palace",
+			"location_category_is_interior": true,
+			"level": 9,
+			"class": "Wizard",
+			"specialization": "Abjuration",
+			"race": "half-elf",
+			"hit_die": 6,
+			"AC": 15,
+			"stats": {
+				"str": 8,
+				"dex": 14,
+				"con": 12,
+				"int": 20,
+				"wis": 10,
+				"cha": 14
+			},
+			"saving_throws": [
+				"int",
+				"wis"
+			],
+			"spellcasting_ability": "int",
+			"skills": [
+				"arcana",
+				"history",
+				"investigation",
+				"perception",
+				"persuasion"
+			],
+			"talents": ["arcane recovery", "arcane ward", "resistance (force)", "mage armor (autocast lvl 1)", "custom lineage", "war caster", "ability score improvement (int)", "ability score improvement (int)"],
+			"notes": "Reason for change arcane ward breaking end of turn: Simpler that way + can't recharge with abjuration spell like in the original (wouldn't really work since those spell don't really do anything right now). Replace 'projected ward' ability with resistance to force dmg.",
+			"inventory": ["Magical staff (Equipped, focus+1, weapon+1)"],
+			"starting_gold": "200d12",
+			"weapon_name": "Staff",
+			"base_weapon_damage": "1d6",
+			"scenarios": [
+			  {
+				"id": 1,
+				"title": "Duel of Destinies",
+				"genre": "Magical Duel Drama",
+				"scenario": "The royal court buzzes with excitement as Dark Wizard Grikal challenges you to a magical duel tomorrow at dawn. To maintain your esteemed position, you must use strategic thinking and powerful spellcasting to ensure Grikal understands his place.",
+				"quests": ["Devise a strategy to ensure victory"],
+				"main_quests": ["Defeat Dark Wizard Grikal in a magical duel"],
+				"secret_info": "Grikal's magic is indeed formidable, but his overconfidence serves as his greatest weakness. He operates under the assumption that he is beyond being outsmarted",
+				"main_antagonist": "Grikal (Dark Wizard)"
+			  },
+			  {
+				"id": 2,
+				"title": "The Grimoire's Echo",
+				"genre": "Mystical Investigation",
+				"scenario": "The kingdom's safety is threatened when a royal grimoire, a tome containing powerful and forbidden spells, goes missing from the royal library. As the Court Wizard, it falls to you to follow the magical traces and retrieve the lost grimoire.",
+				"main_quests": ["Find out who stole the forbidden grimoire", "return it to its place in the royal library"],
+				"main_quests_full": ["Find out who stole the forbidden grimoire", "return the forbidden grimoire to its place in the royal library"],
+				"secret_info": "The thief, a disgruntled former apprentice, is no match for you. Yet his misuse of the tome could be disastrous."
+			  },
+			  {
+				"id": 3,
+				"title": "Whispers of the Sealed Chamber",
+				"genre": "Fantasy Mystery",
+				"scenario": "A mere routine magical ward renewal brings you to a sealed room pulsing with powerful magic. It falls upon you to ensure these entities remain contained, for who else possesses the expertise?",
+				"main_quests": ["Investigate the source of the powerful magic within the sealed room", "secure and contain every entities found inside"],
+				"main_quests_full": ["Investigate the source of the powerful magic within the sealed room", "secure and contain every entities found inside the sealed room"],
+				"secret_info": "The creatures were sealed by a previous Court Wizard who left clues about their containment within his personal journal."
+			  },
+			  {
+				"id": 4,
+				"title": "The Royal Pupil",
+				"genre": "Magical Mentorship Saga",
+				"scenario": "Princess Elara, the youngest of the royal siblings, has begun to display blossoming magical abilities. However, she displays a disdain for discipline, mocking your teachings and taking her lessons lightly. You must mold this defiant royal into a mage worthy of the kingdom.",
+				"main_quests": ["Guide Princess Elara in navigating the intricacies of magic", "make her understand the responsibilities that come with such powers"],
+				"main_quests_full": ["Guide Princess Elara in navigating the intricacies of magic", "make princess Elara understand the responsibilities that come with such magical powers"],
+				"secret_info": "Elara's newfound arrogance stems from a misguided admiration for you. She associates your supreme confidence with magical proficiency and seeks to emulate it in all the wrong ways.",
+				"side_characters": ["Elara (Defiant Princess of Darion)"]
+			  }
+			]
+		}
+	],
+	"generic_scenarios":[
+		{
+			"id": 1,
+			"title": "The Orb of Eternity",
+			"genre": "Epic Treasure Quest",
+			"scenario": "Unfurling a worn-out map, you spot a location marked with an 'X'. It's the Ruins of Desolation, a place whispered about in hushed tones among treasure hunters and scholars. Legends speak of the 'Orb of Eternity', an ancient artifact said to possess reality-altering abilities, buried deep within these ruins.",
+			"main_quests": ["Follow the map to locate the Ruins of Desolation", "explore the ruins to reach its deepest depths", "retrieve the 'Orb of Eternity'"],
+			"main_quests_full": ["Follow the map to locate the Ruins of Desolation", "explore the Ruins of Desolation to reach its deepest depths", "retrieve the 'Orb of Eternity' from the Ruins of Desolation"],
+			"secret_info": "The Orb of Eternity responds to the user's subconscious fears and desires, making it a potentially dangerous tool.",
+			"location_category": "tavern",
+			"force_quest_order": true
+		 },
+		 {
+			"id": 2,
+			"title": "Vault of the Crystal Dragon",
+			"genre": "High Fantasy Adventure",
+			"scenario": "Atop the icy peaks of the Crystal Mountains rests an ancient vault, carved from the heart of a single, massive crystal. This vault is believed to be the resting place of the Crystal Dragon, an ageless entity that hoards a collection of magical artifacts, including the famed 'Armoire of Invincibility'. This artifact is rumored to render its bearer immune to all harm.",
+			"main_quests": ["Ascend the treacherous Crystal Mountains to locate the Vault of the Crystal Dragon", "enter the Vault", "acquire the 'Armoire of Invincibility'"],
+			"main_quests_full": ["Ascend the treacherous Crystal Mountains to locate the Vault of the Crystal Dragon", "enter the Vault of the Crystal Dragon", "acquire the 'Armoire of Invincibility' from the Vault of the Crystal Dragon"],
+			"secret_info": "Anticipating potential theft, the Crystal Dragon cunningly transformed the original 'Armor of Invincibility' into the 'Armoire of Invincibility'. This enchanted wardrobe now only bestows invulnerability on those inside it, rendering it largely impractical for any practical use.",
+			"location_category": "snowy mountain",
+			"force_quest_order": true
+		 },
+		 {
+			"id": 3,
+			"title": "Echoes of the Forgotten King",
+			"genre": "Mythical Dungeon Exploration",
+			"scenario": "Deep within the Ember Forest lies the forgotten Tomb of the Fallen King, a place shrouded in mystery and protected by ancient magic. Rumors tell of the 'Scepter of Wealth', a legendary artifact with the power to bring great fortune to the wielder, resting atop the king's sarcophagus. Many have attempted to claim this relic, but none have returned.",
+			"main_quests": ["Navigate the perilous Ember Forest to find the Tomb of the Fallen King", "reach the Tomb's main chamber", "seize the 'Scepter of Wealth'"],
+			"main_quests_full": ["Navigate the perilous Ember Forest to find the Tomb of the Fallen King", "reach the Tomb of the Fallen King's main chamber", "seize the 'Scepter of Wealth' from the Tomb of the Fallen King"],
+			"secret_info": "The Scepter of Wealth is bound to the spirit of the Fallen King, who judges the worthiness of those who seek to wield its power. The tomb is filled with glimmering illusions and traps, reflecting the king's distrust.",
+			"location_category": "forest",
+			"force_quest_order": true
+		},
+		{
+			"id": 4,
+			"title": "Labyrinth of the Serpent Queen",
+			"genre": "Mystical Maze Adventure",
+			"scenario": "Beneath the sun-scorched dunes of the Wailing Desert lies the Labyrinth of the Serpent Queen, a maze of tunnels and chambers filled with deadly traps and secrets. It is said that at the heart of the labyrinth rests the 'Crown of Destiny', an ancient relic said to grant the wearer insight into the future, but at a great cost.",
+			"main_quests": ["Cross the Wailing Desert to reach the Labyrinth", "navigate the Labyrinth to its center", "claim the 'Crown of Destiny'"],
+			"main_quests_full": ["Cross the Wailing Desert to reach the Labyrinth of the Serpent Queen", "navigate the Labyrinth of the Serpent Queen to its center", "claim the 'Crown of Destiny' from the Labyrinth of the Serpent Queen"],
+			"secret_info": "Though the Serpent Queen has long perished, her influence lingers in the labyrinth, which is filled with her serpentine guardians. The Crown of Destiny is cursed, binding its wearer to the Queen's will.",
+			"location_category": "labyrinth",
+			"force_quest_order": true
+		}
+	]
+}

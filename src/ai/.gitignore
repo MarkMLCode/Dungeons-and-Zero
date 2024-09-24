@@ -1,0 +1,27 @@
+# Ignore all directories
+/__pycache__/
+/_archived_characters/
+/_ai_backups/
+/_archives_dnd/
+/_backups/
+/_other/
+/_system_history_files/
+/convo/
+/microphone_output/
+/_messages_history/
+/logs/
+/_tests/
+
+current_story/*
+messages_history.json
+messages_history_system_default.json
+
+token.pickle
+dpr.txt
+spells/.~lock.spells.csv\#
+
+logs_current_story/*
+
+/_config/config_custom.json
+/_config/dnd_characters_extra.json
+/_config/setup_zero.json
