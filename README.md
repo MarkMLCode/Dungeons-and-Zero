@@ -10,15 +10,17 @@ Tested on python version 3.10
 
 ### OpenAI
 
-This project uses the openAI api to query either gpt3.5 or gpt4, an OpenAI account is thus required to use our system. To use the OpenAI API, create an environment variable called "OPENAI_API_KEY" containing your full API key.
+This project requires an OpenAI account to access the GPT-4o or GPT-4o-mini models via the OpenAI API. To use the API, set an environment variable named "OPENAI_API_KEY" with your API key.
 
 ### Windows
 
-Run setup.bat
-Run run_ai.bat
+Run the following files in order:
+setup.bat
+run_ai.bat
 
 ### Linux
 
+Run the following commands in order:
 ./setup.sh
 ./run_ai.sh
 
