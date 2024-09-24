@@ -2,7 +2,7 @@
 
 ## Description
 
-Dungeons and Zeros is a GPT-powered agent that lets you experience a fully AI-driven Dungeons & Dragons game. It acts as both the game master and player, managing rules, dice rolls, and story progression based on your prompts.
+Dungeons and Zeros is a GPT-powered agent that lets you experience a fully AI-driven Dungeons & Dragons game. It acts as both the game master and the character in the game, managing rules, dice rolls, and story progression based on your prompts.
 
 ## Installation
 
