@@ -24,11 +24,11 @@ Run the following commands in order:
 ./setup.sh
 ./run_ai.sh
 
-### Screenshots
+## Screenshots
 
+### New game example
 ![Example](images/first_turn.png)
-New game example
 
+### Battle example
 ![Example](images/battle_1.png)
 ![Example](images/battle_2.png)
-Battle example
