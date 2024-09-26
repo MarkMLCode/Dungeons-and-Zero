@@ -15,13 +15,17 @@ This project requires an OpenAI account to access the GPT-4o or GPT-4o-mini mode
 ### Windows
 
 Run the following files in order:
+
 setup.bat
+
 run_ai.bat
 
 ### Linux
 
 Run the following commands in order:
+
 ./setup.sh
+
 ./run_ai.sh
 
 ## Screenshots
