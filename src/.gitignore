@@ -5,7 +5,6 @@ rmvpe.pt
 /tts/
 
 ai_livestream.py
-ai_main.py
 ai_vad.py
 generate_messages.py
 tts_main.py

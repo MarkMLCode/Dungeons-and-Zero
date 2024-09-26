@@ -26,4 +26,9 @@ Run the following commands in order:
 
 ### Screenshots
 
-![Example](images/sc1.png)
+![Example](images/first_turn.png)
+New game example
+
+![Example](images/battle1.png)
+![Example](images/battle2.png)
+Battle example
