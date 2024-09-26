@@ -6,27 +6,40 @@ Dungeons and Zeros is a GPT-powered agent that lets you experience a fully AI-dr
 
 ## Installation
 
-Tested on python version 3.10
+Tested on python version 3.10.
 
-### OpenAI
+### OpenAI API
 
 This project requires an OpenAI account to access the GPT-4o or GPT-4o-mini models via the OpenAI API. To use the API, set an environment variable named "OPENAI_API_KEY" with your API key.
 
+On windows, run the following file to save the api key as an environment variable.
+```
+set_open_ai_key.bat
+```
+
+On Linux, run the following commands to save the api key as an environment variable:
+```
+chmod +x set_openai_key.sh  
+./set_openai_key.sh
+```
+
 ### Windows
 
-Run the following files in order:
-
-setup.bat
-
+Run the following files in order to install and then run the program:
+```
+setup.bat  
 run_ai.bat
+```
 
 ### Linux
 
-Run the following commands in order:
-
-./setup.sh
-
+Run the following commands in order to install and then run the program:
+```
+chmod +x setup.sh  
+./setup.sh  
+chmod +x run_ai.sh  
 ./run_ai.sh
+```
 
 ## Screenshots
 
