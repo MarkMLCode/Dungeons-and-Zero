@@ -29,6 +29,6 @@ Run the following commands in order:
 ![Example](images/first_turn.png)
 New game example
 
-![Example](images/battle1.png)
-![Example](images/battle2.png)
+![Example](images/battle_1.png)
+![Example](images/battle_2.png)
 Battle example
