@@ -3480,7 +3480,7 @@ def print_limited_resources(current_story):
     limited_resources = get_limited_resources_triples(current_story)
     
     if len(limited_resources) > 0 or current_story.get("spell_slots") is not None:
-        print_special_text("\n#bold#Abilities:#bold#")
+        print_special_text("\n#bold#Available abilities:#bold#")
         for name, part1, part2 in limited_resources:
             # If part2 is a number
             if isinstance(part2, int) or isinstance(part2, float):
@@ -5779,7 +5779,7 @@ def create_eval_convo(setup_dnd, config_dnd):
         write_json(convo_obj_filepath, convo_obj) 
 
     # Print the current limited resources
-    print_limited_resources(current_story)
+    # print_limited_resources(current_story)
 
     # Save any changes to the current story
         # Don't do it in the func themselves to avoid race conditions
@@ -5888,6 +5888,8 @@ def story_first_turn(current_game, username, current_story, config, config_dnd):
         # Will use both history even if on second convo, because that's what was saved on the history file abpve
     if config.get("add_music", False):
         send_message("", username, current_game=current_game, custom_action="choose_music", filename = convo_obj_filepath_init)
+
+    update_char_sheet_doc(current_story)
 
 def is_time_up_speak_viewers(current_story, config_dnd):
     return (current_story["is_game_won"] or current_story["is_game_lost"]) and current_story.get("game_over_time") is not None and time.time() - current_story.get("game_over_time", 0) >= config_dnd["speak_to_chat_after_gameover_time"]
@@ -6179,11 +6181,7 @@ def convo():
         if current_story is None:
             create_story()
             current_story = get_current_story()
-            
-        # Create char sheet if absent
-        if not os.path.exists(character_sheet_html_file):
-            update_char_sheet_doc(current_story)
-            
+  
         # Initialize the story on the first turn
         if current_story["current_turn"] == 0:
             config_dnd = read_json(f'{ai_config_path}dnd_config.json')
@@ -6199,6 +6197,10 @@ def convo():
             if previous_msg_text:
                 print_special_text("\n#bold#Narrator:#bold#")
                 print(previous_msg_text)
+                
+            # Create char sheet if absent
+            if not os.path.exists(character_sheet_html_file):
+                update_char_sheet_doc(current_story)
 
     first_turn_instance = True
 

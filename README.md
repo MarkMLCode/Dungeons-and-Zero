@@ -55,8 +55,8 @@ chmod +x run_character_sheet.sh
 ## Screenshots
 
 ### New game example
-![Example](images/first_turn.png)
+![Example](images/first_turn_1.png)
+![Example](images/first_turn_2.png)
 
 ### Battle example
-![Example](images/battle_1.png)
-![Example](images/battle_2.png)
+![Example](images/battle.png)
