@@ -711,10 +711,6 @@ def recover_spell_slots_arcane_recovery(spell_slots, spells_per_day, wizard_leve
     recovery_text = "Recovered the following spell slots using arcane recovery: " + ", ".join(recovery_phrases) + "."
     return spell_slots, recovery_text 
 
-# Add +1 to every spell from 1 to 8 inclusively, but only if the nb of spell for that level > 0
-def increase_spells_per_day_by_1_level(spell_slots):
-    return [count + 1 if 1 <= i <= 8 and count > 0 else count for i, count in enumerate(spell_slots, 1)]
-
 def extract_autocast_lvl(text):
     pattern = r"autocast lvl (\d+)"
     match = re.search(pattern, text)
@@ -913,9 +909,10 @@ def send_text_command_dnd(new_user_messages, current_session, nb_retry = 0) -> T
 
     nb_opponents = len(opponents)
     is_in_battle = nb_opponents > 0
+    is_current_battle_over = battle_info is not None and battle_info.get("battle_status", "").lower() != "ongoing"
     
-    # Can only start a battle if not currently in battle and not currently in the opponents turn (don't even use that value in that case atm)
-    allow_battle_start = not is_in_battle and not is_narrator_response
+    # Can only start a battle if not currently in battle or when current battle already done and not currently in the opponents response turn
+    allow_battle_start = (not is_in_battle or is_current_battle_over) and not is_narrator_response
     
     prompt_intro_name = ""
 
@@ -996,8 +993,17 @@ def send_text_command_dnd(new_user_messages, current_session, nb_retry = 0) -> T
     roll_word_with_plural = "rolls" if total_nb_rolls > 1 else "roll"
 
     # Add or remove the json for the intend to start battle (only when not already in battle)
-    battle_text = setup["intend_to_start_battle_text"] if allow_battle_start else setup["dont_intend_to_start_battle_text"]
-    battle_json = setup["intend_to_start_battle_json"] if allow_battle_start else setup["introduce_additional_opponents_json"]
+    if allow_battle_start:
+        battle_text = setup["intend_to_start_battle_text"]
+        battle_json = setup["intend_to_start_battle_json"]
+    # Mc can escape during first narrator roll (but not narrator response)
+    elif not is_narrator_response:
+        battle_text = setup["mc_has_escaped_battle_text"]
+        battle_json = setup["mc_has_escaped_battle_json"] + setup["introduce_additional_opponents_json"]
+    else:
+        battle_text = setup["default_introduction_text"]
+        battle_json = setup["introduce_additional_opponents_json"]
+        
     prompt = prompt.replace("#battle_text#", battle_text).replace("#battle_json#", battle_json)
 
     # Specify that the previous roll determined the result of the action (only if there is one)
@@ -1036,8 +1042,8 @@ def send_text_command_dnd(new_user_messages, current_session, nb_retry = 0) -> T
             roll_source = setup["previous_roll_narrator"]
 
         roll_description = roll_description.replace("#roll_source#", roll_source)
-
-        messages.append(format_msg_oai("user", f"{roll_description}: {roll_text} {battle_info_text}"))
+        messages.append(format_msg_oai("user", f"{roll_description}: {roll_text}{' ' + battle_info_text if battle_info_text else ''}"))
+        
     elif battle_info_text:
         messages.append(format_msg_oai("user", battle_info_text))
 
@@ -1083,8 +1089,7 @@ def send_text_command_dnd(new_user_messages, current_session, nb_retry = 0) -> T
 
     response_message = send_open_ai_gpt_message(max_dnd_response_length, messages, config["dnd_model"], config["dnd_backup_model"], config["oai_call_timeout"], no_gen, config["temperature"], config["top_p"], config["presence_penalty"], config["frequency_penalty"], True, json_mode=is_json_mode, current_turn=current_turn)
     
-    start_battle_narrator = False
-    add_additional_opponents_narrator = False
+    start_battle_narrator = add_additional_opponents_narrator = has_escaped_battle = False
 
     if not is_game_lost:
         response_content_obj = extract_json_from_response("Server response", response_message['content'])
@@ -1093,6 +1098,7 @@ def send_text_command_dnd(new_user_messages, current_session, nb_retry = 0) -> T
         # Field will be missing when already in battle
         start_battle_narrator = validate_bool(response_content_obj.get("attempt_to_start_battle", False)) 
         add_additional_opponents_narrator = validate_bool(response_content_obj.get("additional_opponents_were_introduced", False))
+        has_escaped_battle = validate_bool(response_content_obj.get("has_retreat_stopped_battle", False))
 
         response_message['content'] = response_content_obj['response_text'].strip("\n ") # Remove all newlines and spaces at the start and end of the messages
     else:
@@ -1114,4 +1120,4 @@ def send_text_command_dnd(new_user_messages, current_session, nb_retry = 0) -> T
 
     no_gen += 1
 
-    return response_message["content"], start_battle_narrator, add_additional_opponents_narrator
+    return response_message["content"], start_battle_narrator, add_additional_opponents_narrator, has_escaped_battle

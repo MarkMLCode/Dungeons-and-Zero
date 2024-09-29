@@ -21,7 +21,7 @@ import numpy as np
 import logging
 from colorama import Fore, Style
 
-#from utils.alarm import ring_alarm
+from utils.alarm import ring_alarm
 
 inflect_engine = inflect.engine()
 
@@ -144,15 +144,18 @@ def combine_array_as_sentence(arr):
 def get_available_spell_slots(current_story):
     spells_per_day = current_story.get("spells_per_day", [])
     all_spell_slots = current_story.get("spell_slots", [])
+    
     current_spell_slots = []
+    current_spells_per_day = []
 
     for x, nb_spell_level_per_day in enumerate(spells_per_day):
         # Only include spells slots with > 0 spells per day
         if nb_spell_level_per_day > 0:
             spell_slot_nb = all_spell_slots[x]
             current_spell_slots.append(spell_slot_nb)
+            current_spells_per_day.append(nb_spell_level_per_day)
 
-    return current_spell_slots
+    return current_spell_slots, current_spells_per_day
 
 def get_limited_resources_triples(current_story):
     # Limited resources
@@ -208,7 +211,7 @@ def get_limited_resources_triples(current_story):
         second_wind_remaining = 0 if current_story.get("second_wind_used", False) else 1
         limited_resources.append(("Second Wind", second_wind_remaining, max_second_wind))
     
-    return limited_resources if len(limited_resources) > 0 else None
+    return limited_resources
 
 def get_combatants_info(combatants, combatants_before):
     # Get a list of triples (entry_name, hp, max_hp)
@@ -251,6 +254,20 @@ def add_battle_info_to_convo_obj(convo_obj, current_story, opponents_before = No
         convo_obj["battle_id"] = battle_info.get("id")
 
     return convo_obj
+
+def get_current_quest_text(current_story):
+    current_quest = current_story["quests"][-1] if len(current_story["quests"]) > 0 else "" # Add latest quest to info
+    current_quest = current_quest.get("description", "") if isinstance(current_quest, dict) else current_quest # Get description if quest is a dict (won't be if it comes from story config)
+    return current_quest
+
+def get_complete_inventory_text(current_story):
+    inventory_text = get_formatted_currency(current_story)
+
+    if len(current_story["inventory"]) > 0:
+        inventory_text += ", " if inventory_text != "" else "" # Add comma if coins were added at the start of the inventory
+        inventory_text += get_inventory_text(current_story, reverse_list=True, skip_description=True)
+
+    return inventory_text
 
 def create_convo_obj(ai_response, user_msg = "", username = "", game = None, generate_next_convo=True, current_story = None, \
                      win_count = 0, lose_count = 0, music_theme = "", display_sections = "", \
@@ -296,8 +313,7 @@ def create_convo_obj(ai_response, user_msg = "", username = "", game = None, gen
     convo_obj["char_summary"] = current_story["char_summary"] + "\n\u2014 " + current_story["title"] + " \u2014"
     convo_obj["current_turn"] = current_story["current_turn"]
     
-    current_quest = current_story["quests"][-1] if len(current_story["quests"]) > 0 else "" # Add latest quest to info
-    current_quest = current_quest.get("description", "") if isinstance(current_quest, dict) else current_quest # Get description if quest is a dict (won't be if it comes from story config)
+    current_quest = get_current_quest_text(current_story)
     current_quest += ("; " if current_quest != "" else "") + main_quests_text # Add main quests to info
 
     convo_obj["current_quest"] = current_quest
@@ -305,11 +321,7 @@ def create_convo_obj(ai_response, user_msg = "", username = "", game = None, gen
     convo_obj["max_hp"] = current_story['max_hp']
 
     # Show currency
-    convo_obj["inventory"] = get_formatted_currency(current_story)
-
-    if len(current_story["inventory"]) > 0:
-        convo_obj["inventory"] += ", " if convo_obj["inventory"] != "" else "" # Add comma if coins were added at the start of the inventory
-        convo_obj["inventory"] += get_inventory_text(current_story, reverse_list=True, skip_description=True)
+    convo_obj["inventory"] = get_complete_inventory_text(current_story)
 
     main_location = current_story.get("main_location", "")
     sub_location = current_story.get("sub_location", "")
@@ -319,10 +331,11 @@ def create_convo_obj(ai_response, user_msg = "", username = "", game = None, gen
     convo_obj["location_category_is_interior"] = current_story.get("location_category_is_interior", "")
 
     if current_story.get("spell_slots") is not None:
-        convo_obj["spell_slots"] = get_available_spell_slots(current_story)
+        spell_slots, _ = get_available_spell_slots(current_story)
+        convo_obj["spell_slots"] = spell_slots
 
     limited_resources = get_limited_resources_triples(current_story)
-    if limited_resources is not None:
+    if len(limited_resources) > 0:
         convo_obj["limited_resources"] = limited_resources
 
     convo_obj = add_battle_info_to_convo_obj(convo_obj, current_story)
@@ -342,10 +355,11 @@ def create_convo_obj(ai_response, user_msg = "", username = "", game = None, gen
 
 def add_narrator_fields_to_convo(convo_obj, current_story, initial_hp):
     if current_story.get("spell_slots") is not None:
-        convo_obj["narrator_spell_slots"] = get_available_spell_slots(current_story)
+        spell_slots, _ = get_available_spell_slots(current_story)
+        convo_obj["narrator_spell_slots"] = spell_slots
 
     limited_resources = get_limited_resources_triples(current_story)
-    if limited_resources is not None:
+    if len(limited_resources) > 0:
         convo_obj["narrator_limited_resources"] = limited_resources
 
     # Update the hp in the convo obj so it matches the most up to date hp at the end of the roll (including stuff like second wind)
@@ -473,7 +487,7 @@ def is_moderation_flagged(inputs, username, source, is_game, from_utils = False,
             os.makedirs(quarantine_dir)
 
         write_json(f'{quarantine_dir}/{moderation_file}', moderation_messages)
-        #ring_alarm(is_new_message=False)
+        ring_alarm(is_new_message=False)
     else:
         # Save all moderation messages, even if not flagged
         write_json(f'{moderation_dir}/{moderation_file}', moderation_messages) 
@@ -1875,7 +1889,7 @@ def find_all_occurences_field_in_dict(dict_obj, field_name):
                     results += find_all_occurences_field_in_dict(item, field_name)
     return results
 
-def print_colored_text(text: str):
+def print_special_text(text: str):
     # Regex pattern to match text inside #red# or #green# tags
     pattern = r'#(red|green|bold)#(.*?)#\1#'
 

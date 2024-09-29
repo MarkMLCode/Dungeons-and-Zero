@@ -31,6 +31,11 @@ setup.bat
 run_ai.bat
 ```
 
+(Optional) Open the character sheet (should automatically update once opened):
+```
+run_character_sheet.bat
+```
+
 ### Linux
 
 Run the following commands in order to install and then run the program:
@@ -39,6 +44,12 @@ chmod +x setup.sh
 ./setup.sh  
 chmod +x run_ai.sh  
 ./run_ai.sh
+```
+
+(Optional) Open the character sheet (should automatically update once opened):
+```
+chmod +x run_character_sheet.sh
+./run_character_sheet.sh
 ```
 
 ## Screenshots

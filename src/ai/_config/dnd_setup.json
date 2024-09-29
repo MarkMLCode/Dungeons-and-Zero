@@ -190,7 +190,7 @@
     "quests_message": "Concentrate on achieving your ongoing quest goals while refraining from stating them explicitly.",
     "push_towards_conclusion_message": "The story appears to be dragging on. Start steering the narrative toward its final conclusion. Address the scenario's objectives and lead the narrative towards a fitting conclusion. If the main character possesses the resources and capability to triumph, steer the story to a successful resolution. Conversely, if the main character is ill-equipped to secure victory, the narrative should end in a realistic defeat.",
     "active_opponents_text": "The following opponents are currently participating in battle with the main character: ",
-    "incapacitated_opponents_text": " The following opponents are currently unconscious: ",
+    "incapacitated_opponents_text": "The following opponents are currently unconscious: ",
     "valid_targets_text": "The following allies are currently participating in battle with #char_name#: ",
     "maximum_health": "You are at full health.",
     "good_health": "You bear only minor scratches.",

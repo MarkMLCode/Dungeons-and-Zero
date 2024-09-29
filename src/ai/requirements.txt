@@ -6,3 +6,4 @@ pyphen
 tiktoken
 numpy
 pandas
+livereload

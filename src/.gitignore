@@ -1,9 +1,11 @@
+
+/__pycache__/
+/output/
 hubert_base.pt
 rmvpe.pt
-/output/
-/__pycache__/
-/tts/
+character_sheet.html
 
+/tts/
 ai_livestream.py
 ai_vad.py
 generate_messages.py

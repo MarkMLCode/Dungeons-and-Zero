@@ -30,6 +30,12 @@ skills_data = read_csv(f'{ai_path}tables/skills.csv', 'name')
 monsters_entry_names = read_csv(f'{ai_path}tables/monsters_entry_names.csv', 'name')
 tokens_folder_path = f"../../react_projects/showtext-dnd-react/public/tokens"
 
+# Extra spells
+spells_extra_file_path = f"{spell_path}/spells_extra.csv"
+if os.path.exists(spells_extra_file_path):
+    spells_extra_data = read_csv(spells_extra_file_path, 'name')
+    spells_data.update(spells_extra_data) # add the extra data to the spells data
+
 def get_spell_level_from_text(text):
     if text is None:
         return None
@@ -1474,7 +1480,7 @@ def fix_skill_stat(skill, stat_name):
     
     return None
 
-def roll_d20(reason_advantage = None, has_advantage = False, has_disadvantage = False, has_elven_accuracy = False, skip_advantage_rolls = False, skip_reason = True): # Skip reason by default, takes too much space
+def roll_d20(reason_advantage = None, has_advantage = False, has_disadvantage = False, has_elven_accuracy = False, show_reason = False, skip_advantage_rolls = False): # Skip reason unless lucky, takes too much space
     advantage_text = ""
 
     # If both advantage and disadvantage are present, they cancel each other out
@@ -1496,7 +1502,7 @@ def roll_d20(reason_advantage = None, has_advantage = False, has_disadvantage = 
         advantage_rolls_text = f"; {', '.join(str(roll) for roll in all_d20_rolls)}" if not skip_advantage_rolls else ""
 
         # Advantage text
-        reason_text = f": {', '.join(reasons)}" if len(reasons) > 0 and not skip_reason else ""
+        reason_text = f": {', '.join(reasons)}" if len(reasons) > 0 and show_reason else ""
         advantage_text = f" ({'advantage' if has_advantage else 'disadvantage'}{reason_text}{advantage_rolls_text})"  
         
         return d20_roll, advantage_text
@@ -1584,7 +1590,7 @@ def get_corresponding_entry_row(entry_name):
                 if alt_name_set and entry_name_set == alt_name_set:
                     return row
         
-    print(f"ERROR: Corresponding entry row not found for {entry_name}")
+    print_log(f"WARNING: Corresponding entry row not found for {entry_name}", True)
     return ""
 
 def get_corresponding_entry_name(entry_name):
@@ -2433,7 +2439,7 @@ def process_roll_attack(roll_results: Roll_Attack_Object, current_story, setup_a
         sharpshooter_or_gwm_name = "SharpS" if has_talent_sharpshooter else "GW Master"
         sharpshooter_or_gwm_text = f" - 5 ({sharpshooter_or_gwm_name})" if using_sharpshooter_or_gwm else ""
 
-        d20_roll, advantage_text = roll_d20(which_advantage_text, has_advantage, has_elven_accuracy = has_elven_accuracy)
+        d20_roll, advantage_text = roll_d20(which_advantage_text, has_advantage, has_elven_accuracy = has_elven_accuracy, show_reason = has_lucky_advantage)
         has_hidden_advantage = is_hidden and has_talent("skulker", current_story) # Clear hidden advantage after first attack, unless skulker
 
         final_roll_result = d20_roll + base_attack_bonus + sharpshooter_or_gwm_bonus + tides_of_chaos_bonus
@@ -2795,7 +2801,7 @@ def process_roll_skill(roll_results: Roll_Skill_Object, current_story, setup_aid
     has_reliable_talent = has_talent("reliable talent", current_story) and has_proficiency
     has_silver_tongue = has_talent("silver tongue", current_story) and cleaned_skill in ["persuasion", "deception"]
 
-    d20_roll, advantage_text = roll_d20(which_advantage_text, has_advantage, has_frenzy_disadvantage)
+    d20_roll, advantage_text = roll_d20(which_advantage_text, has_advantage, has_frenzy_disadvantage, show_reason = has_lucky_advantage)
 
     # Reliable talent or silver tongue
     replaced_d20_roll = None
@@ -3201,7 +3207,7 @@ def process_opponent_save(saving_throw, saving_throw_short, saving_throw_DC, opp
     has_lucky_advantage, lucky_text = has_gotten_lucky(current_story, current_save_nb, nb_saves, is_combatant_not_targeting_mc=True)
 
     # Roll
-    d20_roll, advantage_text = roll_d20(lucky_text, has_lucky_advantage)
+    d20_roll, advantage_text = roll_d20(lucky_text, has_lucky_advantage, show_reason = has_lucky_advantage)
 
     final_roll_bonus = target_relevant_stat_mod + target_cr_bonus 
     final_roll_result = d20_roll + final_roll_bonus# Recalculated if the char has the "Heightened spell" or "Unsettling words" talents, see below
@@ -3340,7 +3346,7 @@ def process_magic_spell_attack(current_story, setup_aid, targeted_opponents, nex
         has_lucky_advantage, lucky_text = has_gotten_lucky(current_story, current_attack_index, total_attk_nb)
 
         # Roll
-        d20_roll, advantage_text = roll_d20(lucky_text, has_lucky_advantage)
+        d20_roll, advantage_text = roll_d20(lucky_text, has_lucky_advantage, show_reason = has_lucky_advantage)
 
         # Proficiency bonus
         char_proficiency_text = f" + {char_proficiency_bonus} (Proficiency)" if char_proficiency_bonus > 0 else ""
@@ -3768,7 +3774,7 @@ def list_class_spells(current_story, mark_non_phb = True):
     for spell_name, spell_row in spells_data.items():
         spell_level = spell_row["level"]
         if int(spell_level) > max_spell_level:
-            break
+            continue
 
         # Add to default spells if it's a default spell
         is_default_spell = spell_row.get(default_label, 'False') == 'True'
@@ -4818,7 +4824,7 @@ def process_combatant_skill_turn(current_story, setup_aid, combatant, sheet, com
     has_lucky_advantage, lucky_text = has_gotten_lucky(current_story, is_combatant_not_targeting_mc=True)
 
     # Roll
-    d20_roll, advantage_text = roll_d20(lucky_text, has_lucky_advantage)
+    d20_roll, advantage_text = roll_d20(lucky_text, has_lucky_advantage, show_reason = has_lucky_advantage)
 
     final_roll_result = d20_roll + combatant_skill_mod
 
@@ -5077,7 +5083,7 @@ def process_target_of_spell_turn(is_opponent, current_story, setup_aid, combatan
                 bardic_inspiration_bonus, bardic_inspiration_text = get_bardic_inspiration_bonus(current_story, using_bardic_inspiration, is_opponent)
 
                 # Lucky = disadvantage on combatant roll
-                d20_roll, advantage_text = roll_d20(reason_advantage, has_advantage, has_disadvantage, skip_advantage_rolls=True)
+                d20_roll, advantage_text = roll_d20(reason_advantage, has_advantage, has_disadvantage, show_reason = has_lucky, skip_advantage_rolls=True)
 
                 final_roll_bonus = ability_score_mod + combatant_cr_bonus # Don't include BI here, want to be shown in the roll info separately
                 final_roll_result = d20_roll + final_roll_bonus + bardic_inspiration_bonus
@@ -5270,7 +5276,7 @@ def process_target_of_spell_turn(is_opponent, current_story, setup_aid, combatan
                 has_lucky = False
 
             # Roll
-            d20_roll, advantage_text = roll_d20(reason_advantage, has_advantage, has_disadvantage)
+            d20_roll, advantage_text = roll_d20(reason_advantage, has_advantage, has_disadvantage, show_reason = has_lucky)
 
             saving_throw_DC = 8 + ability_score_mod + combatant_cr_bonus
 
@@ -5593,15 +5599,15 @@ def process_attacked_turn(is_opponent, current_story, setup_aid, combatant, comb
             has_lucky_advantage = has_lucky and not is_opponent
 
             # Reason for advantage or disadvantage
-            which_disadvantage_text = lucky_text if has_lucky_disadvantage else ("patient defense" if has_patient_defense_disadvantage else "")
-            which_advantage_text = lucky_text if has_lucky_advantage else ("reckless attack" if has_reckless_attack_advantage else "")
-            which_adv_or_dis_text = which_advantage_text if which_disadvantage_text == "" else (which_disadvantage_text if which_advantage_text == "" else "") # Empty if both advantage and disadvantage applies
+            which_disadvantage_text = lucky_text if has_lucky_disadvantage else ("patient defense" if has_patient_defense_disadvantage else None)
+            which_advantage_text = lucky_text if has_lucky_advantage else ("reckless attack" if has_reckless_attack_advantage else None)
+            which_adv_or_dis_text = which_advantage_text if not which_disadvantage_text else (which_disadvantage_text if not which_advantage_text else "") # Empty if both advantage and disadvantage applies
             
             # Bardic inspiration
             bardic_inspiration_bonus, bardic_inspiration_text = get_bardic_inspiration_bonus(current_story, using_bardic_inspiration, is_opponent)
                         
             # Roll
-            d20_roll, advantage_text = roll_d20(which_adv_or_dis_text, has_lucky_advantage or has_reckless_attack_advantage, has_lucky_disadvantage or has_patient_defense_disadvantage, skip_advantage_rolls=True)
+            d20_roll, advantage_text = roll_d20(which_adv_or_dis_text, has_lucky_advantage or has_reckless_attack_advantage, has_lucky_disadvantage or has_patient_defense_disadvantage, show_reason = has_lucky, skip_advantage_rolls=True)
             
             final_roll_bonus = combatant_relevant_stat_mod + combatant_cr_bonus # Don't include BI here, want to be shown in the roll info separately
             final_roll_result = d20_roll + final_roll_bonus + bardic_inspiration_bonus
@@ -5897,7 +5903,7 @@ def process_roll_saving_throw(roll_results: Roll_Saving_Throw_Object, current_st
     which_advantage_text = lucky_text if has_lucky_advantage else ("danger sense" if has_danger_sense_advantage else ("rage" if has_rage_str_advantage else None))
 
     # Roll
-    d20_roll, advantage_text = roll_d20(which_advantage_text, has_advantage, skip_advantage_rolls=True)
+    d20_roll, advantage_text = roll_d20(which_advantage_text, has_advantage, show_reason = has_lucky_advantage, skip_advantage_rolls=True)
 
     final_roll_bonus = char_relevant_stat_mod + char_proficiency + total_bonus
     final_roll_result = d20_roll + final_roll_bonus

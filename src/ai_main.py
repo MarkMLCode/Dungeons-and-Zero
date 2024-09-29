@@ -23,10 +23,13 @@ from collections import Counter
 from typing import Tuple, Dict, Any
 from colorama import Fore, Back, Style, just_fix_windows_console
 
-from utils.utils import read_json, write_json, create_convo_obj, is_moderation_flagged, enumerate_folders, send_open_ai_gpt_message, count_tokens, remove_all_asterisks, get_random_choice, remove_username_prefix, segment_text, format_msg_oai, remove_parentheses, extract_json_from_response, process_dice, validate_unspecified, combine_array_as_sentence, write_to_show_text, unlock_next_msg, capitalize_first_letter, get_inventory_text, extract_int, has_talent, get_talent, extract_text_in_parenthesis, singularize_name,join_with_and, validate_bool, add_battle_info_to_convo_obj, get_binomial_dist_result, add_narrator_fields_to_convo, process_user_msg_emotion, process_unrelated, process_refused, convert_text_segments_to_objs, create_expression_obj, remove_system_prefix, create_text_segment_objs, extract_username_from_prefix, remove_username_inside_text, update_print_log_settings, print_log, print_colored_text, merge_config, create_folders
+from utils.utils import read_json, write_json, create_convo_obj, is_moderation_flagged, enumerate_folders, send_open_ai_gpt_message, count_tokens, remove_all_asterisks, get_random_choice, remove_username_prefix, segment_text, format_msg_oai, remove_parentheses, extract_json_from_response, process_dice, validate_unspecified, combine_array_as_sentence, write_to_show_text, unlock_next_msg, capitalize_first_letter, get_inventory_text, extract_int, has_talent, get_talent, extract_text_in_parenthesis, singularize_name,join_with_and, validate_bool, add_battle_info_to_convo_obj, get_binomial_dist_result, add_narrator_fields_to_convo, process_user_msg_emotion, process_unrelated, process_refused, convert_text_segments_to_objs, create_expression_obj, remove_system_prefix, create_text_segment_objs, extract_username_from_prefix, remove_username_inside_text, update_print_log_settings, print_log, print_special_text, merge_config, create_folders, get_limited_resources_triples, get_current_quest_text, get_complete_inventory_text, get_available_spell_slots
 
+from utils.alarm import ring_alarm
 from utils.print_logger import PrintLogger
-#from utils.google_drive import update_google_doc, setup_google_drive_credentials
+from utils.google_drive import update_char_sheet_google_doc, setup_google_drive_credentials
+from utils.livestream import get_next_message_stream, del_all_expired_messages
+from utils.web import update_char_sheet_html_file
 
 from ai.dnd_server import send_text_command_dnd, get_proficiency_bonus, alignment_to_words, recover_spell_slots_arcane_recovery, get_mc_health_status, get_incapacitated_combatants, update_frenzy_status, get_stat_mod, are_opponents_surprised, get_combatants_cr, get_monsters_attribute_text, get_long_stat_name, get_opponent_max_spell_level, get_monsters_single_value, spells_per_day, use_hit_die, extract_autocast_lvl, get_daily_sorcery_points, get_daily_ki_points, get_monsters_hp, get_char_classes, find_lowest_no_upcast_slot, get_max_spell_level, get_max_cr_additional_opponents, get_bardic_inspiration_dice
 
@@ -57,6 +60,7 @@ current_story_path = f'{ai_path}current_story/'
 current_convo_path = f'{root_path}current_convo/'
 current_convo_debug_path = f'{root_path}current_convo_debug/'
 blacklist_path = f'{ai_path}blacklist'
+character_sheet_html_file = "character_sheet.html"
 
 # if a folder doesn't exist, create it
 create_folders([archives_dnd_path, current_story_path, chat_mode_message_history_path, root_music_path, current_convo_path, current_convo_debug_path, blacklist_path])
@@ -114,8 +118,8 @@ def get_ai_config():
 initial_config = get_ai_config()
 update_print_log_settings(initial_config)
 
-#if initial_config.get("update_google_doc", False):
-#    setup_google_drive_credentials() # Setup credentials for google drive
+if initial_config.get("update_google_doc", False):
+    setup_google_drive_credentials() # Setup credentials for google drive
 
 print("\n---DnD server started---")
 
@@ -622,7 +626,7 @@ def spell_level_text(spell_level):
 
 def update_char_sheet_doc(current_story):
     char_sheet = {
-        "Name": current_story["char_summary"],
+        f"{current_story['char_summary']}": "#title#",
         "Class": f'Level {current_story["level"]} ' + current_story["class"] + (f" ({current_story['specialization']})" if current_story.get("specialization") is not None else ""),
         "Race": capitalize_first_letter(current_story["race"]),
         "Alignment": f'{alignment_to_words(current_story["alignment"])}',
@@ -708,8 +712,10 @@ def update_char_sheet_doc(current_story):
 
     if current_story.get("spellcasting_ability"):
         char_sheet["Spellcasting Ability"] = current_story["spellcasting_ability"]
-        char_sheet["Spells per Day"] = format_spells(current_story["spells_per_day"])
-        char_sheet["Spell Slots"] = format_spells(current_story["spell_slots"])
+        
+        spell_slots, spells_per_day = get_available_spell_slots(current_story)
+        char_sheet["Spells per Day"] = get_formatted_spell_slots(spells_per_day) #+ " (" + format_spells(spells_per_day) + ")"
+        char_sheet["Spell Slots"] = get_formatted_spell_slots(spell_slots)
 
     if current_story.get("special_abilities"):
         char_sheet["Special Abilities"] = join_with_comma(current_story["special_abilities"])
@@ -768,10 +774,16 @@ def update_char_sheet_doc(current_story):
         # Add domain spells list
         if len(domains_spells_dict) > 0:
             char_sheet["Domain Spells"] = "#title#"
+            x = 0
 
             for spell_level, spell_list in domains_spells_dict.items():
                 formatted_spell_list = [get_spell_link(spell) for spell in spell_list] # call get_spell_link for each spell
                 char_sheet[f"{spell_level_text(spell_level)}#"] = join_with_comma(formatted_spell_list) # Add '#' to avoid clash with the 'Level x' fields, will be removed in the google drive script
+                
+                # Add space between all spell levels except the last one
+                if x < len(domains_spells_dict) - 1:
+                    char_sheet[f"#empty#domain_{spell_level}"] = ""
+                x += 1
 
         char_sheet["Spells List"] = "#title#"
         x = 0
@@ -810,7 +822,7 @@ def update_char_sheet_doc(current_story):
 
 
         if len(passive_talents_list) > 0:
-            char_sheet["Passive Talents (Used Automatically)"] = "#title#"
+            char_sheet["Passive Talents (Always on)"] = "#title#"
 
             for talent_obj in passive_talents_list:
                 talent_title = get_talent_title(talent_obj)
@@ -823,8 +835,9 @@ def update_char_sheet_doc(current_story):
         char_sheet["Homebrew Talent"] = "Is completely new and has no matching talent with the same name in D&D 5e."
         char_sheet["Advantage / Disadvantage"] = "When you have advantage / disadvantage on a d20 roll, you roll a second d20. You use the higher of the two rolls if you have advantage, and the lower roll if you have disadvantage. If circumstances cause a roll to have both advantage and disadvantage, you are considered to have neither of them, and you roll only one d20."
 
-    #config = get_ai_config()
-    #update_google_doc(config["char_sheet_doc_id"], char_sheet) # Update the shared google doc
+    config = get_ai_config()
+    update_char_sheet_html_file(character_sheet_html_file, char_sheet)
+    update_char_sheet_google_doc(config.get("char_sheet_doc_id", ""), char_sheet) # Update the shared google doc
 
 def update_character_sheet_worker(queue):
     while True:
@@ -1132,9 +1145,9 @@ def create_story(char_name = None, scenario_id = None, use_generic_scenario = No
         })
         write_json(stories_history_path, stories_history)
 
-    #config = get_ai_config()
-    #if config.get("update_google_doc", False):
-    #    start_update_char_sheet_doc_thread(current_story_obj) # Update the shared google doc
+    config = get_ai_config()
+    if config.get("update_google_doc", False):
+        start_update_char_sheet_doc_thread(current_story_obj) # Update the shared google doc
 
 def current_date_prefix():
     current_date = date.today()
@@ -1963,7 +1976,7 @@ def process_info_text(info_section, separator_label):
     intro_messages = info_section.split(separator_label)
 
     for x, intro_message in enumerate(intro_messages):
-        print_colored_text(intro_message)
+        print_special_text(intro_message)
         time.sleep(0.5)
 
 def print_roll_info(display_sections):
@@ -1986,17 +1999,19 @@ def print_roll_info(display_sections):
                 action_objs = unique_action_obj.get("actions", []) if unique_action_obj is not None else []
 
                 text_first_part = unique_action_obj.get("info", "")
-                print_colored_text(text_first_part)
+                print_special_text(text_first_part)
                 
                 # Go through each action
                 for action_obj in action_objs:
+                    spacing = "  "
                     action_text_part_1 = action_obj.get("start_info", "")
                     if action_text_part_1:
-                        print_colored_text(action_text_part_1)
+                        print_special_text(spacing + action_text_part_1)
+                        spacing += "  "
 
                     action_text_part_2 = action_obj.get("info", "")
                     if action_text_part_2:
-                        print_colored_text(action_text_part_2)
+                        print_special_text(spacing + action_text_part_2)
 
                     time.sleep(0.5)
 
@@ -2684,7 +2699,7 @@ def append_roll_text_to_history(roll_text, messages_history):
 
 def create_error_log(error_name, error_msg, response_message, username, is_game):
     print_log(error_msg)
-    # ring_alarm(is_new_message=False, repeat_x_times=2)
+    ring_alarm(is_new_message=False, repeat_x_times=2)
 
     error_obj = {"error": error_msg, "message": response_message}
 
@@ -3031,8 +3046,13 @@ def add_additional_opponents(battle_info, username, current_game, messages_histo
 def update_battle_info(current_story, username, current_game, messages_history, start_battle, is_narrator = False, can_add_additional_opponents = False): 
     battle_info = current_story.get("battle_info")
 
+    # When the opponents are defeated in combat, battle status is not ongoing (victorious)
+    if battle_info is not None and battle_info["battle_status"] != "ongoing":
+        end_battle(current_story, battle_info, is_narrator)
+        battle_info = None
+
     # Create battle info (only if ai or server intends to start it)
-    if battle_info is None and start_battle:
+    if battle_info is None and start_battle:        
         _, _, battle_info = send_message("", username, current_game=current_game, custom_action="get_battle_info", override_messages_history=messages_history, override_current_story=current_story)
 
         # Add battle (no battle status when starting a new battle, only when continuing it)
@@ -3064,12 +3084,8 @@ def update_battle_info(current_story, username, current_game, messages_history, 
                 create_combatant_sheets(username, current_game, messages_history, current_story, allies)
 
                 post_process_battle_info(allies, get_combatant_sheets())
-
-    # When the opponents are defeated in combat, battle status is not ongoing but the battle is not None
-    elif battle_info is not None and battle_info["battle_status"] != "ongoing":
-        end_battle(current_story, battle_info, is_narrator)
-        #defeated_opponents_in_combat = True
-        battle_info = None
+                
+            print_hp_info(current_story, True, True, True)
 
     # Update the current battle info
     elif battle_info is not None:
@@ -3163,6 +3179,7 @@ def get_current_allies_info_text(current_story, setup_dnd):
 
 def get_current_opponents_info_text(current_story, setup_dnd):
     battle_info = current_story.get("battle_info", None)
+    battle_info_text = ""
 
     if battle_info is not None:
         opponents = battle_info["opponents"]
@@ -3174,29 +3191,32 @@ def get_current_opponents_info_text(current_story, setup_dnd):
         active_opponent_counter = Counter([opponent["group_name"].lower() for opponent in active_opponents])
         unconsious_opponents_counter = Counter([opponent["group_name"].lower() for opponent in unconsious_opponents])
 
+        battle_info_texts = []
+
         # Output the opponent groups, including the CR of the first memeber and the number of opponents in the group
-        battle_info_text = setup_dnd["active_opponents_text"]
-        
-        group_texts = []
-        for group_name in active_opponent_counter:
-            first_matching_opponent = next((opponent for opponent in active_opponents if opponent["group_name"].lower() == group_name.lower()), None)
-            group = get_group_from_combatant(first_matching_opponent)
-
-            if group is None:
-                print(f"ERROR: Group {group_name} not found in battle info.")
-                continue
-
-            # Opponent count + lowercase if not a named npc
-            group_count = active_opponent_counter[group_name]
-            group_count_text = f"{group['name']}" if group.get("is_named_npc", False) else f"{group_count} {group_name}"
+        if len(active_opponent_counter) > 0:
+            group_texts = []
             
-            is_spellcaster = group.get("is_spellcaster", False)
-            is_spellcaster_text = "spellcaster" if is_spellcaster else "not spellcaster"
+            for group_name in active_opponent_counter:
+                first_matching_opponent = next((opponent for opponent in active_opponents if opponent["group_name"].lower() == group_name.lower()), None)
+                group = get_group_from_combatant(first_matching_opponent)
 
-            group_text = f"{group_count_text} (CR {group['cr']}, {is_spellcaster_text})"
-            group_texts.append(group_text)
+                if group is None:
+                    print(f"ERROR: Group {group_name} not found in battle info.")
+                    continue
 
-        battle_info_text += ", ".join(group_texts) + "." if len(group_texts) > 0 else ""
+                # Opponent count + lowercase if not a named npc
+                group_count = active_opponent_counter[group_name]
+                group_count_text = f"{group['name']}" if group.get("is_named_npc", False) else f"{group_count} {group_name}"
+                
+                is_spellcaster = group.get("is_spellcaster", False)
+                is_spellcaster_text = "spellcaster" if is_spellcaster else "not spellcaster"
+
+                group_text = f"{group_count_text} (CR {group['cr']}, {is_spellcaster_text})"
+                group_texts.append(group_text)
+
+            if len(group_texts) > 0:
+                battle_info_texts.append(setup_dnd["active_opponents_text"] + ", ".join(group_texts) + ".")
 
         # Unconscious opponents
         if len(unconsious_opponents_counter) > 0:
@@ -3204,11 +3224,11 @@ def get_current_opponents_info_text(current_story, setup_dnd):
             for group_name in unconsious_opponents_counter:
                 unconscious_texts.append(f"{unconsious_opponents_counter[group_name]} {group_name}")
 
-            battle_info_text += setup_dnd["incapacitated_opponents_text"] + ", ".join(unconscious_texts) + "."
+            battle_info_texts.append(setup_dnd["incapacitated_opponents_text"] + ", ".join(unconscious_texts) + ".")
 
-        return battle_info_text
-    
-    return ""
+        battle_info_text = " ".join(battle_info_texts)
+        
+    return battle_info_text
 
 def add_spell_list_to_action_prompt(action_prompt, sheet, opponent):
     spells = sheet.get("spells", [])
@@ -3428,6 +3448,75 @@ def update_roll_with_rage_text_and_info(main_section_obj, roll_text, rage_info, 
         roll_text = add_to_roll_text(roll_text, rage_text, True)
 
     return main_section_obj, roll_text
+
+def print_hp_info(current_story, print_mc_hp = False, print_allies_hp = False, print_opponents_hp = False):
+    if not print_mc_hp and not print_allies_hp and not print_opponents_hp:
+        return
+    
+    print_special_text("\n#bold#HP:#bold#")
+    
+    if print_mc_hp: # Only print if the hp changed or if in battle
+        print(f"{current_story['char_name']}: {current_story['hp']}/{current_story['max_hp']}")
+        
+    battle_info = current_story.get("battle_info")
+    
+    if battle_info is None:
+        return
+				
+    if print_allies_hp:
+        for ally in battle_info["allies"]:
+            print(f"{ally['identifier']} HP: {ally['hp']}/{ally['max_hp']}")
+            
+    if print_opponents_hp:
+        if print_mc_hp or print_allies_hp:
+            print_special_text("\n#bold#HP Opponents:#bold#")
+        
+        for opponent in battle_info["opponents"]:
+            print(f"{opponent['identifier']} HP: {opponent['hp']}/{opponent['max_hp']}")
+
+def get_formatted_spell_slots(spell_slots_arr):
+    spell_slots_text = [str(slot) for slot in spell_slots_arr]
+    return  "/".join(spell_slots_text)
+
+def print_limited_resources(current_story):
+    limited_resources = get_limited_resources_triples(current_story)
+    
+    if len(limited_resources) > 0 or current_story.get("spell_slots") is not None:
+        print_special_text("\n#bold#Abilities:#bold#")
+        for name, nb, max_nb in limited_resources:
+            print(f"{name}: {nb}/{max_nb}")
+            
+        if current_story.get("spell_slots") is not None:
+            spell_slots, _ = get_available_spell_slots(current_story)
+            spell_slots_text = get_formatted_spell_slots(spell_slots)
+            print("Spell slots: " + spell_slots_text)
+            
+def print_story_properties(current_story):
+    current_quest = get_current_quest_text(current_story)
+    if current_quest:
+        print_special_text("\n#bold#Quest:#bold#")
+        print(current_quest)
+        
+    main_quest_text = get_main_quests_sentence(current_story)
+    if main_quest_text:
+        print_special_text("\n#bold#Main quest:#bold#")
+        print(main_quest_text + ".")
+    
+    inventory_text = get_complete_inventory_text(current_story)
+    if inventory_text:
+        print_special_text("\n#bold#Inventory:#bold#")
+        print(inventory_text)
+        
+    location_text = current_story.get("main_location", "")
+    if location_text:
+        print_special_text("\n#bold#Location:#bold#")
+        
+        sub_location = current_story.get("sub_location", "")
+        print(location_text + (f" ({sub_location})" if sub_location else ""))
+
+    print_limited_resources(current_story)
+    
+    print_hp_info(current_story, True, True, True)   
 
 # Get the last x*2 messages from chat_messages_history, where x is either unrelated_or_refused_retries or the nb of messages to include after game won or lost
 def get_current_turn_chat_messsages(chat_messages_history, nb_chat_turns_to_include):
@@ -3749,6 +3838,7 @@ def run_battle_turn(ai_new_msg, username, current_game, convo_obj_filepath, mess
     ally_section_obj = None
 
     roll_text_mc_emotions = roll_text
+    is_potentially_damaging_opponents = False
 
     # BATTLE TURN MC
     if battle_info is not None:
@@ -3781,7 +3871,9 @@ def run_battle_turn(ai_new_msg, username, current_game, convo_obj_filepath, mess
             if opponent_health_explanation_text is not None:
                 roll_text = add_to_roll_text(roll_text, opponent_health_explanation_text)
 
-        if chosen_action in ["spell", "attacking", "consumable_magic_item", "special_ability"] or has_attacking_allies:
+        is_potentially_damaging_opponents = chosen_action in ["spell", "attacking", "consumable_magic_item", "special_ability"] or has_attacking_allies
+
+        if is_potentially_damaging_opponents:
             # Remaining opponents texts
             remaining_opponents_texts = get_remaining_opponents_text(battle_info, setup_dnd)
             if remaining_opponents_texts != "":
@@ -3815,17 +3907,16 @@ def run_battle_turn(ai_new_msg, username, current_game, convo_obj_filepath, mess
     main_section_obj, roll_text = update_roll_with_rage_text_and_info(main_section_obj, roll_text, rage_info, rage_text)
 
     # Print roll_text
-    print_colored_text("\n#bold#Your turn:#bold#")
-    print_roll_info(mc_turn_sections)
+    if len(mc_turn_sections) > 0:
+        print_special_text("\n#bold#Your turn:#bold#")
+        print_roll_info(mc_turn_sections)
 
     if roll_text:
         print_log("\n" + roll_text + "\n")
     
     # print the opponents health
-    if battle_info is not None and battle_info.get("opponents") is not None:
-        print("") # Add a new line before printing the health
-        for opponent in battle_info["opponents"]:
-            print(f"{opponent['identifier']} HP: {opponent['hp']}/{opponent['max_hp']}")
+    if is_potentially_damaging_opponents:
+        print_hp_info(current_story, print_opponents_hp=True)
 
     emotion_custom_action = "get_emotions_mc" if len(mc_turn_sections) > 0 else "skip"
 
@@ -3856,9 +3947,12 @@ def run_battle_turn(ai_new_msg, username, current_game, convo_obj_filepath, mess
         return
 
     # Get new command from dnd
-    dnd_server_text, start_battle_narrator, add_additional_opponents_narrator = results[0]
+    dnd_server_text, start_battle_narrator, add_additional_opponents_narrator, has_escaped_battle = results[0]
     convo_user_msg = dnd_server_text
-
+    
+    if has_escaped_battle and battle_info is not None:
+        battle_info["battle_status"] = "retreated"
+        
     # Add the emotions to the main convo's roll_info
     mc_roll_info_emotions = results[1][0] if results[1][0] is not None else [] # First element of the send_message result is the emotions
     add_emotion_to_section(main_section_obj, mc_roll_info_emotions)
@@ -3868,7 +3962,7 @@ def run_battle_turn(ai_new_msg, username, current_game, convo_obj_filepath, mess
 
     convo_user_msg_no_prefix = remove_system_prefix(convo_user_msg)
 
-    print_colored_text("\n#bold#Narrator:#bold#")
+    print_special_text("\n#bold#Narrator:#bold#")
     print(convo_user_msg_no_prefix)
 
     # Write the narrator msg for next dnd msg once ready
@@ -4011,17 +4105,13 @@ def run_battle_turn(ai_new_msg, username, current_game, convo_obj_filepath, mess
             text_prefix = "Opponents turn" if battle_info is not None else "Environment"
 
             # Print roll_text
-            print_colored_text(f"\n#bold#{text_prefix}:#bold#")
+            print_special_text(f"\n#bold#{text_prefix}:#bold#")
             print_roll_info(opponents_sections_objs)
 
             # print mc health and allies
-            if original_hp != current_story["hp"] or battle_info is not None: # Only print if the hp changed or if in battle
-                print("") # Add a new line before printing the health
-                print(f"MC HP: {current_story['hp']}/{current_story['max_hp']}")
+            should_print_mc_hp = original_hp != current_story["hp"] or battle_info is not None
             
-            if battle_info is not None and battle_info.get("allies") is not None:
-                for ally in battle_info["allies"]:
-                    print(f"{ally['name']} HP: {ally['hp']}/{ally['max_hp']}")
+            print_hp_info(current_story, print_mc_hp = should_print_mc_hp, print_allies_hp=True)
 
             if narrator_roll_text:
                 print_log("\n" + narrator_roll_text + "\n")
@@ -4041,10 +4131,10 @@ def run_battle_turn(ai_new_msg, username, current_game, convo_obj_filepath, mess
                 return
 
             # Dnd msg
-            dnd_narrator_roll_response, _, add_additional_opponents_roll_response = results[0]
+            dnd_narrator_roll_response, _, add_additional_opponents_roll_response, _ = results[0]
             dnd_narrator_roll_response_no_prefix = remove_system_prefix(dnd_narrator_roll_response)
 
-            print_colored_text("\n#bold#Narrator:#bold#")
+            print_special_text("\n#bold#Narrator:#bold#")
             print(dnd_narrator_roll_response_no_prefix)
 
             emotions_opponents_roll_info = results[1][0] # First element of the send_message result is the emotions
@@ -4287,7 +4377,7 @@ def send_message(new_user_msg_arg: str, username_arg: str = None, start_send_mes
             is_before_game_won = is_game_won and current_story.get("game_over_time") is None
             is_before_game_lost = is_game_lost and current_story.get("game_over_time") is None
             is_before_game_won_or_lost = is_before_game_won or is_before_game_lost
-            is_time_up_game_won_or_lost_speak_viewers = is_time_up_speak_viewers(current_story, setup_dnd)
+            is_time_up_game_won_or_lost_speak_viewers = is_time_up_speak_viewers(current_story, config_dnd)
 
             # Post mortem analysis of game over msg
             if is_game_won_or_lost_msg and is_game_lost: # Initial game lost msg when no user msg
@@ -4437,10 +4527,12 @@ def send_message(new_user_msg_arg: str, username_arg: str = None, start_send_mes
     # Set where there actual messages start
     start_msg_index = len(messages)
 
-    chat_messages_history = [] # Only for is_chat_dnd
-
-    # Whether to include chat messages in the history
-    if current_story is not None:
+    chat_messages_history = [] 
+    
+    # Whether to include chat messages in the history (either here or in the message history loop further down below)
+    if current_story is not None and (is_chat_dnd or custom_action == "get_answer_to_viewer_decisions"):
+        chat_messages_history = get_messages_history(dnd_with_chat_history_file)
+        
         # How many time the user msg has been refused or found to be unrelated in a row
         unrelated_or_refused_retries = current_story.get("unrelated_or_refused_retries", 0)
 
@@ -4455,11 +4547,10 @@ def send_message(new_user_msg_arg: str, username_arg: str = None, start_send_mes
         elif is_chat_dnd and is_discussion_after_game_won_or_lost:
             nb_chat_turns_to_add = config_dnd["nb_chat_msg_duo_included_after_game_discussion"]
         # Include the current turn chat messages for get_answer_to_viewer_decisions
-        elif custom_action is not None and custom_action == "get_answer_to_viewer_decisions":
+        elif not is_chat_dnd: 
             nb_chat_turns_to_add = unrelated_or_refused_retries + 1
 
         if nb_chat_turns_to_add > 0:
-            chat_messages_history = get_messages_history(dnd_with_chat_history_file)
             last_chat_messages = get_current_turn_chat_messsages(chat_messages_history, nb_chat_turns_to_add)
             
             # Append the last x*2 messages to messages
@@ -5015,7 +5106,8 @@ def send_message(new_user_msg_arg: str, username_arg: str = None, start_send_mes
             inserted_messages_count += 1
 
         # Add dnd chat msg to the convo, as long as max limit not reached or the last msg was not refused or unrelated
-        if can_add_chat_convo_msg and len(chat_messages_history) >= 2:
+            # Only insert them for assistant msg (to avoid having the viewer msg in the middle of the convo)
+        if can_add_chat_convo_msg and len(chat_messages_history) >= 2 and msg["role"] == "assistant":
             ai_answer = copy.deepcopy(chat_messages_history.pop())
             user_question = copy.deepcopy(chat_messages_history.pop())
 
@@ -5093,11 +5185,15 @@ def send_message(new_user_msg_arg: str, username_arg: str = None, start_send_mes
 
         # Only include spellcaster opponent when target of spell, no restriction otherwise (casters can attack in melee too)   
         if not is_combatant_action or not is_opponent_combatant_action:
-            battle_info_texts.append(get_current_opponents_info_text(current_story, setup_dnd))
+            opponents_battle_info_text = get_current_opponents_info_text(current_story, setup_dnd)
+            if opponents_battle_info_text:
+                battle_info_texts.append(opponents_battle_info_text)
 
         # Add allies to the battle info, even if not opponent turn (ex : target allies for healing spell)
         if not custom_action in ["get_roll_attack", "get_battle_info_additional_opponents"] and (not is_combatant_action or is_opponent_combatant_action):
-            battle_info_texts.append(get_current_allies_info_text(current_story, setup_dnd))
+            allies_battle_info_Text = get_current_allies_info_text(current_story, setup_dnd)
+            if allies_battle_info_Text:
+                battle_info_texts.append(allies_battle_info_Text)
 
         battle_info_text = " ".join(battle_info_texts)
 
@@ -5310,14 +5406,14 @@ def send_message(new_user_msg_arg: str, username_arg: str = None, start_send_mes
         user_msg_emotion = ""
 
     if user_msg_emotion:
-        print_colored_text(f"\n#bold#Reaction:#bold# {user_msg_emotion}")
+        print_special_text(f"\n#bold#Reaction:#bold# {user_msg_emotion}")
 
     # Write response in console
     if current_game == "dnd":
-        print_colored_text("\n#bold#Your character:#bold#")
+        print_special_text("\n#bold#Your character:#bold#")
         print(new_msg_content)
     else:
-        print_colored_text(f"\n#bold#{response_message['role'].capitalize()}:#bold#")
+        print_special_text(f"\n#bold#{response_message['role'].capitalize()}:#bold#")
         print(f"{Fore.LIGHTMAGENTA_EX}{new_msg_content}{Style.RESET_ALL}") 
 
     # Don't add user_msg to ai dungeon, we want to add the following dnd_msg, not the preceding one (also, don't set to "", or else won't be processed correctly)
@@ -5475,7 +5571,7 @@ def write_and_send_chat_msg(generate_next_convo=True, state_switch = None, switc
     while True:
         # Only get new message if it's the first time or the message was flagged (not on retry)
         if get_user_message == True:
-            next_prompt, username, custom_prefix = get_next_message_direct() #if not is_stream else get_next_message_stream()
+            next_prompt, username, custom_prefix = get_next_message_direct() if not is_stream else get_next_message_stream()
             # If no new messages (has_sent_msg = False)
             if next_prompt is None:
                 return False 
@@ -5509,11 +5605,11 @@ def write_and_send_chat_msg(generate_next_convo=True, state_switch = None, switc
 
             if is_unrelated:
                 roll_info_text = setup_dnd["warning_unrelated"] if not retry_limit_reached else setup_dnd["warning_unrelated_limit_reached"] # Centered text
-                print_colored_text(roll_info_text + "\n") # color already in the text
+                print_special_text(roll_info_text) # color already in the text
                 suffix = "_unrelated"
             elif is_refused:
                 roll_info_text = setup_dnd["warning_refused"] if not retry_limit_reached else setup_dnd["warning_refused_limit_reached"]
-                print_colored_text(roll_info_text + "\n") # color already in the text
+                print_special_text(roll_info_text) # color already in the text
                 suffix = "_refused"
 
             # Keep looking for a new user message if the message was flagged as being unrelated or refused by the AI
@@ -5539,8 +5635,8 @@ def write_and_send_chat_msg(generate_next_convo=True, state_switch = None, switc
         # Message sent: Exit loop if not flagged for moderation (result == -1), get new user message on flag
         if response != -1:
             has_sent_msg = True
-            # if is_stream:
-            #     del_all_expired_messages() # Delete all expired messages (all past msg if in game) after the final next msg is chosen
+            if is_stream:
+                del_all_expired_messages() # Delete all expired messages (all past msg if in game) after the final next msg is chosen
 
             break
             #return True #Exit loop
@@ -5659,18 +5755,16 @@ def create_eval_convo(setup_dnd, config_dnd):
         enemy_text = "enemies were" if len(battle_info["opponents"]) > 1 else "enemy was"
         evals_to_show.append(f"The {enemy_text} taken by surprise and skipped their turn.")
 
-    # Show empty eval when battle ended + no other evals to show (otherwise battle won't end until next turn)
-    if battle_end_eval is not None:
-        if len(evals_to_show) == 0:
-            evals_to_show.append("")
-
+    # Create eval convo if there are any evals to show, or if battle just ended (otherwise battle won't end until next turn)
+    if len(evals_to_show) > 0 or battle_end_eval is not None:
         battle_end_eval = None
-
-    # Create eval convo if there are any evals to show
-    if len(evals_to_show) > 0:
-        print("\n" + "\n".join(evals_to_show)) # print evals
-
-        roll_info_text = "#message_separator#".join(evals_to_show)
+        roll_info_text = ""
+        
+        if len(evals_to_show) > 0:
+            print_special_text("\n#bold#nInfo:#bold#")
+            print("\n".join(evals_to_show)) # print evals
+            roll_info_text = "#message_separator#".join(evals_to_show)
+            
         sections = [create_section_obj(roll_info_text, section_name="eval")]
 
         # Write the roll info in the convo file
@@ -5680,6 +5774,9 @@ def create_eval_convo(setup_dnd, config_dnd):
         no_gen += 1 # Increase no by 1, since it should be it's own msg (don't use existing convo filepath, otherwise will be in front of the 'roll_response' convo obj in the list (can cause issue when replaying convos in tts)
         convo_obj_filepath, _ = get_new_convo_filename(True, False, current_story, custom_action="eval") 
         write_json(convo_obj_filepath, convo_obj) 
+
+    # Print the current limited resources
+    print_limited_resources(current_story)
 
     # Save any changes to the current story
         # Don't do it in the func themselves to avoid race conditions
@@ -5731,6 +5828,8 @@ def prepare_game_won_or_lost(current_story, is_game_won, is_game_lost):
     save_story_debug_folder(current_story, True)
 
 def story_first_turn(current_game, username, current_story, config, config_dnd):
+    print_story_properties(current_story)
+    
     story_init_text = current_story["char_description"] #+ "#doublenewline#" + current_story["scenario"]
     print(f"\n{story_init_text}\n")
 
@@ -6051,15 +6150,15 @@ def write_and_send_message_dnd(custom_action_test = None, allow_continue_without
     save_story_debug_folder(current_story)
 
     # Update the shared google doc
-    #if config.get("update_google_doc", False):
-    #    start_update_char_sheet_doc_thread(current_story) 
+    if config.get("update_google_doc", False):
+        start_update_char_sheet_doc_thread(current_story) 
 
     return True
 
 @app.command()
 def convo():
     extra_info = None
-    custom_action_test = None 
+    custom_action_test = None #"get_roll_attack" 
     process_tests = True
 
     is_dnd_server_text = False # Whether to manually test dnd server
@@ -6068,16 +6167,35 @@ def convo():
 
     current_user = config.get("username", "system")
     current_game = config.get("game", "dnd")
-    current_story = get_current_story()
-
-    if current_story is None:
-        create_story()
+    current_mode = config.get("ai_mode", "dnd")
+    
+    current_story = None
+    if current_mode == "dnd":
         current_story = get_current_story()
 
-    # Initialize the story on the first turn
-    if current_story["current_turn"] == 0:
-        config_dnd = read_json(f'{ai_config_path}dnd_config.json')
-        story_first_turn(current_game, current_user, current_story, config, config_dnd)
+        if current_story is None:
+            create_story()
+            current_story = get_current_story()
+            
+        # Create char sheet if absent
+        if not os.path.exists(character_sheet_html_file):
+            update_char_sheet_doc(current_story)
+            
+        # Initialize the story on the first turn
+        if current_story["current_turn"] == 0:
+            config_dnd = read_json(f'{ai_config_path}dnd_config.json')
+            story_first_turn(current_game, current_user, current_story, config, config_dnd)
+        else:
+            print_story_properties(current_story)
+            
+            # print the previous history message
+            dnd_history = get_messages_history(dnd_history_file)
+            previous_msg_text = dnd_history[-1]["content"] if len(dnd_history) > 0 else ""
+            previous_msg_text = remove_system_prefix(previous_msg_text)
+            
+            if previous_msg_text:
+                print_special_text("\n#bold#Narrator:#bold#")
+                print(previous_msg_text)
 
     first_turn_instance = True
 
@@ -6112,17 +6230,22 @@ def convo():
             print("User is now randomized between 0 and 100")
             continue
         
+        # Chat mode
         if current_game != "dnd":
             if (current_user == "system" and current_game != "dnd"): # Not considered as from system in dnd setting
                 send_message(current_input, start_send_message_timestamp=time.time(), current_game=current_game, moderate_user_msg=True) #No prefix + no user
             else:
                 send_message(current_input, username, start_send_message_timestamp=time.time(), current_game=current_game, moderate_user_msg=True)
+        # Manually test the dnd server
         elif is_dnd_server_text:
-            current_story = get_current_story() # refresh in case i changed it
-            send_text_command_dnd(["I examine the intricate wall carvings to see if they interact with the runed key.", "The intricate wall carvings don't seem to interact with the runed key. As you lean closer, a hidden mechanism triggers, sounding an alarm throughout the mansion"], get_dnd_memory_and_author_note_additions(current_story, ("I attempted to do a dexterity saving throw due to trap. It was a Failure! Describe the negative outcome as that action fails to do as intended.", [[],"", []], ""), is_narrator_response=True)) # Send new command to dnd
+            current_story = get_current_story()
+            text = roll_text = ""
+            send_text_command_dnd([text], get_dnd_memory_and_author_note_additions(current_story, (roll_text, [[],"", []], ""), is_narrator_response=False)) # Send new command to dnd server
+        # Manually test a custom action
         elif custom_action_test is not None: 
             write_and_send_message_dnd(custom_action_test, allow_continue_without_user_msg=True, switched_scene=first_turn_instance, specific_extra_info=extra_info, process_tests = process_tests)
             print_log(f"\nCustom action test: {custom_action_test}") # So I know I'm currently testing a custom action
+        # Dnd mode
         else:
             # Skip generate msg on turn 0, otherwise will run that msg once turn 0 is done
             current_story = get_current_story() # Update curr story, otherwise will stay on turn 0

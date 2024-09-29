@@ -205,7 +205,7 @@ level,name,damage_dice,upcast_dice,nb_attack_rolls,level_scaling_dice,type,effec
 4,Blight,8d8,1d8,,,Necrotic,CON,Half,,,,,,True,Necromancy,No,PHB,219,False,False,True,False,False,False,True,True,True,evil,,,
 4,Compulsion,,,,,,WIS,Fail,True,,,,,,Enchantment,No,PHB,224,True,False,False,False,False,False,False,False,False,,,,
 4,Confusion,,,,,,WIS,Fail,True,,,,,,Enchantment,No,PHB,224,True,False,False,False,False,True,True,False,False,,,,
-4,Conjure Minor Elementals,,,,,,,,,,,,True,,Conjuration,No,PHB,226,False,False,True,False,False,False,True,False,False,,,,
+4,Conjure MInor Elementals,,,,,,,,,,,,True,,Conjuration,No,PHB,226,False,False,True,False,False,False,True,False,False,,,,
 4,Conjure Woodland Beings,,,,,,,,,,,,,,Conjuration,No,PHB,226,False,False,True,False,True,False,False,False,False,,,,
 4,Control Water,,,,,,,,,,,,,,Transmutation,No,PHB,227,False,True,True,False,False,False,True,False,False,,,,
 4,Death Ward,,,,,,,,,True,,,,,Abjuration,No,PHB,230,False,True,False,True,False,False,False,False,True,,,,

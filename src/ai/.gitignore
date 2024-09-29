@@ -11,6 +11,7 @@
 /_messages_history/
 /logs/
 /_tests/
+/tests/
 
 current_story/*
 messages_history.json
@@ -25,3 +26,4 @@ logs_current_story/*
 /_config/config_custom.json
 /_config/dnd_characters_extra.json
 /_config/setup_zero.json
+/spells/spells_extra.csv
