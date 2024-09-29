@@ -1891,7 +1891,7 @@ def find_all_occurences_field_in_dict(dict_obj, field_name):
 
 def print_special_text(text: str):
     # Regex pattern to match text inside #red# or #green# tags
-    pattern = r'#(red|green|bold)#(.*?)#\1#'
+    pattern = r'#(red|green|white|bold)#(.*?)#\1#'
 
     # Define a function that replaces the matched text with colorama properties
     def replace_color(match):

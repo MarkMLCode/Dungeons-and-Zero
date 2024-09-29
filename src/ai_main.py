@@ -2433,8 +2433,6 @@ def create_current_memory_story_message(setup_dnd, config_dnd, current_story, sk
 
         if include_inventory_msg:
             inventory_texts.append(setup_dnd["add_to_inventory_message"])
-            
-        if include_inventory_msg or chat_with_viewer:
             inventory_texts.append(get_retrieved_from_inventory_text(current_story, setup_dnd, inventory))
 
         memories.append(" ".join(inventory_texts))
@@ -3483,8 +3481,13 @@ def print_limited_resources(current_story):
     
     if len(limited_resources) > 0 or current_story.get("spell_slots") is not None:
         print_special_text("\n#bold#Abilities:#bold#")
-        for name, nb, max_nb in limited_resources:
-            print(f"{name}: {nb}/{max_nb}")
+        for name, part1, part2 in limited_resources:
+            # If part2 is a number
+            if isinstance(part2, int) or isinstance(part2, float):
+                print(f"{name}: {part1}/{part2}")
+            # If part2 is a color
+            else:
+                print_special_text(f"{name}: #{part2}#{part1}#{part2}#")
             
         if current_story.get("spell_slots") is not None:
             spell_slots, _ = get_available_spell_slots(current_story)
