@@ -60,3 +60,8 @@ chmod +x run_character_sheet.sh
 
 ### Battle example
 ![Example](images/battle.png)
+
+### Character Sheet
+![Example](images/char_sheet_1.png)
+![Example](images/char_sheet_2.png)
+![Example](images/char_sheet_3.png)
