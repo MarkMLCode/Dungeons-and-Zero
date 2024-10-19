@@ -7,7 +7,6 @@ level,name,damage_dice,upcast_dice,nb_attack_rolls,level_scaling_dice,type,effec
 0,Eldritch Blast,1d10,,1,,Force,ranged_spell,Miss,,,,,,,Evocation,No,PHB,236,False,False,False,False,False,False,False,True,False,,,,
 0,Friends,,,,,,,,,,,,,,Enchantment,No,PHB_MISSING,244,True,False,False,False,False,True,True,True,False,,,,
 0,Fire Bolt,1d10,,,1d10,Fire,ranged_spell,Miss,,,,,,,Evocation,No,PHB,242,False,False,False,False,False,True,True,False,True,,,True,True
-0,Firebolt,1d10,,,1d10,Fire,ranged_spell,Miss,,,,,,,Evocation,No,PHB,242,False,False,False,False,False,True,True,False,True,,,True,True
 0,Guidance,,,,,,,,,True,,,,,Divination,No,PHB,248,False,True,True,False,False,False,False,False,True,,,,
 0,Lay on Hands,,,,,,,,,,1,,,,Evocation,,,,False,False,False,True,False,False,False,False,False,,,,
 0,Light,,,,,,DEX,Fail,,,,,,,Evocation,No,PHB,255,True,True,False,False,False,True,True,False,True,,,,

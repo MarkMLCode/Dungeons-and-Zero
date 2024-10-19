@@ -35,6 +35,8 @@ spells_extra_file_path = f"{spell_path}/spells_extra.csv"
 if os.path.exists(spells_extra_file_path):
     spells_extra_data = read_csv(spells_extra_file_path, 'name')
     spells_data.update(spells_extra_data) # add the extra data to the spells data
+    
+spells_data_no_spaces = {key.replace(" ", ""): value for key, value in spells_data.items()} # Create a version with no spaces
 
 def get_spell_level_from_text(text):
     if text is None:
@@ -304,6 +306,11 @@ def get_status_effects(response_content):
     return groups_with_status_effects
 
 def has_matching_token_image(identity):
+    # if file doesn't exist, return false
+    if not os.path.exists(tokens_folder_path):
+        print_log(f"WARNING: Tokens folder not found: {tokens_folder_path}", True)
+        return False
+    
     formatted_identity = identity.replace(" ", "_").lower()
     for file_name in os.listdir(tokens_folder_path):
         image_name = os.path.splitext(file_name)[0]
@@ -3062,14 +3069,14 @@ def find_spell_level(spell_name):
 # Return True if the given class has the given spell, return None if the spell is not in the database
     # Also, return the min spell level for the spell (if it's in the database)
 def any_class_has_spell(spell_name, classes_name) -> Tuple[Any, Any]:
-    spell_name = spell_name.lower()
-    spell_level = find_spell_level(spell_name)
+    spells_data_name = get_spells_data_name(spell_name)
+    spell_level = find_spell_level(spells_data_name)
 
     if spell_level is None:
         return None, None
 
     for class_name in classes_name:
-        if spells_data[spell_name].get(class_name, 'False') == 'True':
+        if spells_data[spells_data_name].get(class_name, 'False') == 'True':
             return True, spell_level
         
     return False, spell_level
@@ -3823,11 +3830,40 @@ def list_class_spells(current_story, mark_non_phb = True):
 
     return class_spells_dict, domains_spells_dict, default_spells
 
-def get_spell_row(spell_name):
-    if spell_name and spell_name.lower() in spells_data:
-        return spells_data[spell_name.lower()]
+def get_spells_data_name(spell_name):
+    if not spell_name:
+        return None
     
+    spell_name = spell_name.lower()
+    
+    if spell_name in spells_data:
+        return spell_name
+    
+    # Compare without spaces
+    no_spaces_spell_name = spell_name.replace(" ", "")
+    if no_spaces_spell_name in spells_data_no_spaces:
+        original_spell_name = spells_data_no_spaces[no_spaces_spell_name]["name"].lower()
+        return original_spell_name
+    
+    # Remove s at the end (if there is one)
+    if spell_name.endswith("s"):
+        no_s_spell_name = spell_name[:-1]
+        if no_s_spell_name in spells_data:
+            return no_s_spell_name
+    # Add s at the end
+    else:
+        with_s_spell_name = spell_name + "s"
+        if with_s_spell_name in spells_data:
+            return with_s_spell_name    
     return None
+
+def get_spell_row(spell_name):
+    spells_data_name = get_spells_data_name(spell_name)
+    
+    if spells_data_name is None:
+        return None
+    
+    return spells_data[spells_data_name]
 
 def get_spell_info(spell_row, current_story) -> Tuple[Any, Any, Any, Any, Any, Any, Any, Any, Any, Any, Any, Any, Any]:
     if spell_row is None:
@@ -3927,7 +3963,8 @@ def get_spell_damage_from_row(spell_row, spell_name, upcast_level, char_level, i
     return final_damage_dice
 
 def get_spell_damage(spell_name, upcast_level, char_level, is_healing = False):
-    spell_row = spells_data[spell_name.lower()]
+    spells_data_name = get_spells_data_name(spell_name)
+    spell_row = spells_data[spells_data_name]
     return get_spell_damage_from_row(spell_row, spell_name, upcast_level, char_level, is_healing)
 
 # Add nb of opponents targetted if AOE
