@@ -1058,7 +1058,12 @@ def cast_spell(response_content):
     
     spell_level = get_spell_level_from_text(magic_obj.get("spell_level"))
     is_healing = validate_bool(magic_obj.get("is_healing"))
-    available_to_classes = magic_obj.get("available_to_classes")
+    available_to_classes = magic_obj.get("available_to_classes", [])
+    
+    # Convert to list if it's a string
+    if isinstance(available_to_classes, str):
+        available_to_classes = available_to_classes.split(",")
+        available_to_classes = [class_name.strip() for class_name in available_to_classes]
 
     print_log(f"\nRoll found in {roll_name}: spell_name: {spell_name}, spell level: {spell_level}, {print_text}, damage dice: {damage_dice}, saves half: {saves_half}, damage_type: {damage_type}, is_aoe: {is_aoe}, is_healing: {is_healing}, \
           available to classes: {available_to_classes}. Found in prompt: {response_content}")
@@ -4613,7 +4618,7 @@ def get_incurred_damaged_text(total_dmg, current_story, setup_aid, action_name):
 def get_arcane_ward_text(current_story, total_dmg, setup_aid) -> Tuple[Any, Any]:
     arcane_ward_broke = current_story["arcane_ward_hp"] <= total_dmg
 
-    arcane_ward_text = f"Their Arcane Ward absorbed all the damages"
+    arcane_ward_text = f"My Arcane Ward absorbed all the damages"
     arcane_ward_info = f"Your Arcane Ward absorbed all the damages"
 
     if arcane_ward_broke:
@@ -5166,8 +5171,8 @@ def process_target_of_spell_turn(is_opponent, current_story, setup_aid, combatan
 
                 roll_info_text += f". {roll_info_damage}" if roll_info_damage != "" else ""
 
-                # Update the ai hp and add to history
-                if is_targeting_mc:
+                # Update the ai hp and add to history, but only if no arcane ward is active.
+                if is_targeting_mc and current_story.get("arcane_ward_hp", 0) == 0:
                     update_ai_hp(current_story, total_attk_dmg)
                     total_dmg_vs_mc += total_attk_dmg
                 elif not is_targeting_mc:
@@ -5349,8 +5354,8 @@ def process_target_of_spell_turn(is_opponent, current_story, setup_aid, combatan
             
             roll_info_save += roll_info_damage
 
-            # Update the ai hp and add to history
-            if is_mc_saving_throw:
+            # Update the ai hp and add to history, but only if no arcane ward is active.
+            if is_mc_saving_throw and current_story.get("arcane_ward_hp", 0) == 0:
                 update_ai_hp(current_story, total_dmg_save)
                 total_dmg_vs_mc += total_dmg_save
                 total_nb_spells_targeting_mc += 1 if total_dmg_save > 0 else 0
@@ -5985,9 +5990,6 @@ def process_roll_saving_throw(roll_results: Roll_Saving_Throw_Object, current_st
     # Update roll info with dmg
     roll_info_text += roll_info_damage # Empty when no damage
 
-    # Update the ai hp
-    update_ai_hp(current_story, total_dmg)
-
     section_obj = {
         "name": "Saving throw",
         "characters": [{
@@ -6009,6 +6011,15 @@ def process_roll_saving_throw(roll_results: Roll_Saving_Throw_Object, current_st
             ]
         }]
     }
+    
+    # Update the ai hp, but only if no arcane ward is active.
+    if current_story.get("arcane_ward_hp", 0) == 0:
+        update_ai_hp(current_story, total_dmg)
+    else: 
+        # If there is an arcane ward active, add the text and info for it.
+        arcane_ward_text, arcane_ward_info = get_arcane_ward_text(current_story, total_dmg, setup_aid)
+        roll_text += f"\n{arcane_ward_text}."
+        section_obj["info"] = arcane_ward_info
     
     return roll_text, section_obj, total_dmg
 
