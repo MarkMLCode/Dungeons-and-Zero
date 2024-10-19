@@ -12,7 +12,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))) 
 from utils.utils import extract_json_from_response, validate_unspecified, remove_parentheses, process_dice, read_csv, get_rolls, extract_int, has_talent, get_talent, extract_text_in_parenthesis, get_order_text, singularize_name, join_with_and, validate_bool, extract_float, print_log
 
 from ai.dnd_server import get_proficiency_bonus, \
-    get_long_stat_name, get_full_casters, get_half_casters, stat_to_modifier, get_opponent_health_status, get_bardic_inspiration_dice, get_stat_mod, get_roll_action_result, get_roll_action_result_one_reversed, are_opponents_surprised, extract_cr, get_damage_roll_by_cr, get_monsters_values, get_mc_health_status, get_monsters_single_value, get_monsters_hp, get_char_classes, get_max_spell_level, fix_group_cr_by_difficulty_level, get_cr_normalized_value, get_max_cr_current_level, get_cr_difference, raise_cr_by_one
+    get_long_stat_name, get_full_casters, get_half_casters, stat_to_modifier, get_opponent_health_status, get_bardic_inspiration_dice, get_stat_mod, get_roll_action_result, get_roll_action_result_one_reversed, are_opponents_surprised, extract_cr, get_damage_roll_by_cr, get_monsters_values, get_mc_health_status, get_monsters_single_value, get_monsters_hp, get_char_classes, get_max_spell_level, fix_group_cr_by_difficulty_level, get_cr_normalized_value, get_max_cr_current_level, get_cr_difference, raise_cr_by_one, get_sorcery_points_cost
 
 is_linux = os.name == "posix"
 
@@ -4207,9 +4207,11 @@ def process_cast_spell(cast_spell_results: Cast_Spell_Object, can_cast_spell, cu
     sorcery_points = current_story.get("sorcery_points", 0)
     nb_sorcery_points_used_for_spell_slot = 0
 
-    if not can_cast_spell_at_level and sorcery_points >= spell_slot_used:
-        can_cast_spell_at_level = True
-        nb_sorcery_points_used_for_spell_slot = spell_slot_used
+    if not can_cast_spell_at_level:
+        sorcery_points_cost = get_sorcery_points_cost(spell_level)
+        if sorcery_points >= sorcery_points_cost:
+            can_cast_spell_at_level = True
+            nb_sorcery_points_used_for_spell_slot = sorcery_points_cost
 
     # No spell slots left to cast the spell (can't upcast it either)
     if not can_cast_spell_at_level:

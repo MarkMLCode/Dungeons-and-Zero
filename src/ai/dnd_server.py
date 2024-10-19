@@ -5,7 +5,7 @@ import os
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))) # Add the parent directory to sys.path
 
-from utils.utils import read_json, format_msg_oai, send_open_ai_gpt_message, count_tokens, is_moderation_flagged, extract_json_from_response, remove_parentheses, read_csv, get_rolls, has_talent, validate_bool, extract_int, validate_unspecified, find_all_occurences_field_in_dict, print_log
+from utils.utils import read_json, format_msg_oai, send_open_ai_gpt_message, count_tokens, is_moderation_flagged, extract_json_from_response, remove_parentheses, read_csv, get_rolls, has_talent, validate_bool, extract_int, validate_unspecified, find_all_occurences_field_in_dict, print_log, clamp_messages_to_history
 import re
 import pandas as pd
 from collections import Counter
@@ -785,8 +785,22 @@ def find_lowest_no_upcast_slot(spell_slots):
                     no_higher_slots = False
                     break
             if no_higher_slots:
-                return i + 1
+                return i
     return None
+
+def get_sorcery_points_cost(spell_level):
+    if spell_level == 1:
+        return 2
+    elif spell_level == 2:
+        return 3
+    elif spell_level == 3:
+        return 5
+    elif spell_level == 4:
+        return 6
+    elif spell_level == 5:
+        return 7
+    else:
+        return 999
 
 def remove_system_prefix(text):
     pattern = r"\*?(system:|System:)\*?\s?"
@@ -857,16 +871,22 @@ def alignment_to_words(abbreviation):
     return alignment_dict.get(abbreviation.upper(), "Unknown Alignment")
 
 # Inverts the roles of 'user' and 'assistant' in the message history.
-def get_dnd_message_history():
-    messages_history = read_json(history_file_path)
+def get_dnd_messages_history(messages_history_arg):
+    messages_history = copy.deepcopy(messages_history_arg)
+    messages_history_dnd = []
 
     for message in messages_history:
+        if message['type'] != 'dnd':
+            continue
+        
         if message['role'] == 'user':
             message['role'] = 'assistant'
         elif message['role'] == 'assistant':
             message['role'] = 'user'
 
-    return messages_history
+        messages_history_dnd.append(message)
+
+    return messages_history_dnd
 
 def get_roll_result_text(roll_info, is_assistant_roll, roll_action):
     roll_result_text = roll_info[1].lower()
@@ -890,7 +910,7 @@ def get_roll_result_text(roll_info, is_assistant_roll, roll_action):
         # No roll result (ex: magic at environment)
         return None
 
-def send_text_command_dnd(new_user_messages, current_session, nb_retry = 0) -> Tuple[str, bool, bool]: #, is_narrator_msg = False):
+def send_text_command_dnd(new_user_messages, current_session, messages_history_arg, nb_retry = 0) -> Tuple[str, bool, bool]: #, is_narrator_msg = False):
     global no_gen
 
      # CURRENT SESSION VARIABLES
@@ -945,7 +965,7 @@ def send_text_command_dnd(new_user_messages, current_session, nb_retry = 0) -> T
     prompt += " " + (setup["prompt"] if not is_game_lost else setup["prompt_game_lost"])
 
     #current_session = read_json(current_session_file_path)
-    messages_history = get_dnd_message_history()
+    messages_history = get_dnd_messages_history(messages_history_arg)
     
     messages = []
     # system msg at the start
@@ -994,7 +1014,14 @@ def send_text_command_dnd(new_user_messages, current_session, nb_retry = 0) -> T
 
     # Add or remove the json for the intend to start battle (only when not already in battle)
     if allow_battle_start:
-        battle_text = setup["intend_to_start_battle_text"]
+        last_battle_end_turn = current_story.get("last_battle_end_turn")
+        avoid_back_to_back_battles = ""
+        
+        # Specify to avoid back to back battles if currently in battle or if it's been less than 3 turns since the last battle ended
+        if last_battle_end_turn is not None and (battle_info is not None or current_turn - last_battle_end_turn < 3):
+            avoid_back_to_back_battles = setup["avoid_back_to_back_battles"]
+        
+        battle_text = setup["intend_to_start_battle_text"].replace("#avoid_back_to_back_battles#", avoid_back_to_back_battles)
         battle_json = setup["intend_to_start_battle_json"]
     # Mc can escape during first narrator roll (but not narrator response)
     elif not is_narrator_response:
@@ -1026,27 +1053,6 @@ def send_text_command_dnd(new_user_messages, current_session, nb_retry = 0) -> T
         msg_type = "user" if x == 0 else "assistant"
         messages.append(format_msg_oai(msg_type, new_user_msg)) # user msg and prompt are sepparated
 
-    # Note : The roll text is added to the prompt, so it's not needed here
-        # Also, can sometimes be very long now, so it's better to keep it in the prompt
-    if roll_text is not None and (is_assistant_roll or is_narrator_roll):
-        roll_description = setup["previous_roll_description"].replace("#roll_word#", roll_word_with_plural)
-
-        if is_assistant_roll:
-            roll_source = setup["previous_roll_assistant"]
-            if not is_narrator_response and len(allies) > 0:
-                roll_source += " " + setup["previous_roll_assistant_allies"]
-        elif is_in_battle:
-            opponent_word_with_plural = "opponents" if nb_opponents > 1 else "opponent"
-            roll_source = setup["previous_roll_narrator_battle"].replace("#opponent_word#", opponent_word_with_plural)
-        else:
-            roll_source = setup["previous_roll_narrator"]
-
-        roll_description = roll_description.replace("#roll_source#", roll_source)
-        messages.append(format_msg_oai("user", f"{roll_description}: {roll_text}{' ' + battle_info_text if battle_info_text else ''}"))
-        
-    elif battle_info_text:
-        messages.append(format_msg_oai("user", battle_info_text))
-
     messages.append(format_msg_oai("user", prompt))
 
     author_note_tokens = 0
@@ -1070,6 +1076,34 @@ def send_text_command_dnd(new_user_messages, current_session, nb_retry = 0) -> T
         else:
             messages.insert(start_msg_index, last_msg) # Always insert right after the system (since we start by the last msg and work our way backwards)
             total_length = new_total_length
+
+    history_cache_group_size = config.get("history_cache_group_size", 10)
+    has_exceeded_max_token_length = new_total_length >= config["max_dnd_messages_length"]
+    
+    # If the context size limit was reached, remove messages until we reach a message who has the same modulo in the original history
+    clamp_messages_to_history(has_exceeded_max_token_length, messages, messages_history, start_msg_index, history_cache_group_size)
+
+    # Note : The roll text is added to the prompt, so it's not needed here
+        # Also, can sometimes be very long now, so it's better to keep it outside of the prompt
+        # Also, should add the message after the clamp, otherwise will cause a discrepency in where the start index is clamped to.
+    if roll_text is not None and (is_assistant_roll or is_narrator_roll):
+        roll_description = setup["previous_roll_description"].replace("#roll_word#", roll_word_with_plural)
+
+        if is_assistant_roll:
+            roll_source = setup["previous_roll_assistant"]
+            if not is_narrator_response and len(allies) > 0:
+                roll_source += " " + setup["previous_roll_assistant_allies"]
+        elif is_in_battle:
+            opponent_word_with_plural = "opponents" if nb_opponents > 1 else "opponent"
+            roll_source = setup["previous_roll_narrator_battle"].replace("#opponent_word#", opponent_word_with_plural)
+        else:
+            roll_source = setup["previous_roll_narrator"]
+
+        roll_description = roll_description.replace("#roll_source#", roll_source)
+        messages.insert(-1, format_msg_oai("user", f"{roll_description}: {roll_text}{' ' + battle_info_text if battle_info_text else ''}"))
+        
+    elif battle_info_text:
+        messages.insert(-1, format_msg_oai("user", battle_info_text))
 
     # Insert the author notes 3 messages before the end, unless there are not enough messages, then insert it at the start
     if author_note_msg is not None:
@@ -1109,7 +1143,7 @@ def send_text_command_dnd(new_user_messages, current_session, nb_retry = 0) -> T
         print("Message flagged for moderation")
 
         if nb_retry < 3:
-            response_message['content'], start_battle_narrator, add_additional_opponents_narrator = send_text_command_dnd(new_user_messages, current_session, nb_retry + 1)
+            response_message['content'], start_battle_narrator, add_additional_opponents_narrator = send_text_command_dnd(new_user_messages, current_session, messages_history_arg, nb_retry + 1)
         else:
             raise Exception(f"ERROR: Moderation thrown {nb_retry} times in a row, aborting.")
 

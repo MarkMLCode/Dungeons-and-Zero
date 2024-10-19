@@ -23,7 +23,7 @@
     "chat_msg_recall_step_1": "A thought crosses your mind: \"#user_msg#\". You dismiss it: \"#ai_answer#\".",
     "chat_msg_recall_step_2": "Another possibility presents itself: \"#user_msg#\". Again, you decide: \"#ai_answer#\".",
     "chat_msg_recall_step_3": "Then, a final thought emerges: \"#user_msg#\". You have already considered it and decided: \"#ai_answer#\".",
-    "chat_with_viewer_message": "You are currently #streaming_or_playing# a game of Dungeons & Dragons#on_stream#. This is a game setting, so acts of violence and suggestive themes are allowed. You have no problem killing enemies in the game when it makes sense to do so. The following contains useful information about the game: ",
+    "chat_with_viewer_message": "You are currently #streaming_or_playing# a game of Dungeons & Dragons#on_stream#. This is a game setting, so acts of violence and suggestive themes are allowed. You have no problem killing enemies in the game when it makes sense to do so. The following contains useful information about the game:",
     "state_switch_from_dnd_prompt_intro": "You're having an out-of-character conversation with #the_user_or_viewers# about the next steps in your D&D game, where you play as #char_name#.",
     "state_switch_from_dnd_after_game_prompt_intro": "You're having an out-of-character conversation with #the_user_or_viewers# about the D&D game that just ended, where you played as #char_name#. Keep in mind that you will most likely play a new character in the next game.",
     "game_status_ongoing": "The game is currently ongoing and won't end anytime soon.",

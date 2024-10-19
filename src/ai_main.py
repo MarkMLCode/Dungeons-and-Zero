@@ -13,6 +13,7 @@ from collections import defaultdict
 
 import string
 import traceback
+import itertools
 
 import sys
 import copy
@@ -23,7 +24,7 @@ from collections import Counter
 from typing import Tuple, Dict, Any
 from colorama import Fore, Back, Style, just_fix_windows_console
 
-from utils.utils import read_json, write_json, create_convo_obj, is_moderation_flagged, enumerate_folders, send_open_ai_gpt_message, count_tokens, remove_all_asterisks, get_random_choice, remove_username_prefix, segment_text, format_msg_oai, remove_parentheses, extract_json_from_response, process_dice, validate_unspecified, combine_array_as_sentence, write_to_show_text, unlock_next_msg, capitalize_first_letter, get_inventory_text, extract_int, has_talent, get_talent, extract_text_in_parenthesis, singularize_name,join_with_and, validate_bool, add_battle_info_to_convo_obj, get_binomial_dist_result, add_narrator_fields_to_convo, process_user_msg_emotion, process_unrelated, process_refused, convert_text_segments_to_objs, create_expression_obj, remove_system_prefix, create_text_segment_objs, extract_username_from_prefix, remove_username_inside_text, update_print_log_settings, print_log, print_special_text, merge_config, create_folders, get_limited_resources_triples, get_current_quest_text, get_complete_inventory_text, get_available_spell_slots
+from utils.utils import read_json, write_json, create_convo_obj, is_moderation_flagged, enumerate_folders, send_open_ai_gpt_message, count_tokens, remove_all_asterisks, get_random_choice, remove_username_prefix, segment_text, format_msg_oai, remove_parentheses, extract_json_from_response, process_dice, validate_unspecified, combine_array_as_sentence, write_to_show_text, unlock_next_msg, capitalize_first_letter, get_inventory_text, extract_int, has_talent, get_talent, extract_text_in_parenthesis, singularize_name,join_with_and, validate_bool, add_battle_info_to_convo_obj, get_binomial_dist_result, add_narrator_fields_to_convo, process_user_msg_emotion, process_unrelated, process_refused, convert_text_segments_to_objs, create_expression_obj, remove_system_prefix, create_text_segment_objs, extract_username_from_prefix, remove_username_inside_text, update_print_log_settings, print_log, print_special_text, merge_config, create_folders, get_limited_resources_triples, get_current_quest_text, get_complete_inventory_text, get_available_spell_slots, clamp_messages_to_history, start_loading_animation, stop_loading_animation, convert_msg_oai_add_type
 
 from utils.alarm import ring_alarm
 from utils.print_logger import PrintLogger
@@ -31,7 +32,7 @@ from utils.google_drive import update_char_sheet_google_doc, setup_google_drive_
 from utils.livestream import get_next_message_stream, del_all_expired_messages
 from utils.web import update_char_sheet_html_file
 
-from ai.dnd_server import send_text_command_dnd, get_proficiency_bonus, alignment_to_words, recover_spell_slots_arcane_recovery, get_mc_health_status, get_incapacitated_combatants, update_frenzy_status, get_stat_mod, are_opponents_surprised, get_combatants_cr, get_monsters_attribute_text, get_long_stat_name, get_opponent_max_spell_level, get_monsters_single_value, spells_per_day, use_hit_die, extract_autocast_lvl, get_daily_sorcery_points, get_daily_ki_points, get_monsters_hp, get_char_classes, find_lowest_no_upcast_slot, get_max_spell_level, get_max_cr_additional_opponents, get_bardic_inspiration_dice
+from ai.dnd_server import send_text_command_dnd, get_proficiency_bonus, alignment_to_words, recover_spell_slots_arcane_recovery, get_mc_health_status, get_incapacitated_combatants, update_frenzy_status, get_stat_mod, are_opponents_surprised, get_combatants_cr, get_monsters_attribute_text, get_long_stat_name, get_opponent_max_spell_level, get_monsters_single_value, spells_per_day, use_hit_die, extract_autocast_lvl, get_daily_sorcery_points, get_daily_ki_points, get_monsters_hp, get_char_classes, find_lowest_no_upcast_slot, get_max_spell_level, get_max_cr_additional_opponents, get_bardic_inspiration_dice, get_sorcery_points_cost
 
 from ai.rolls import get_roll_from_action, process_roll_attack, process_roll_skill, process_cast_spell, process_use_item, process_roll_saving_throw, get_clean_item_name, process_combatant_sheets, process_combatant_turn, get_combatant_sheet, Combatant_Action_Object, can_use_spell, get_attack_bonus, get_damage_bonus, get_base_extra_attacks, get_sneak_attack_dice, get_group_from_combatant, get_groups_from_combatants, get_bonus_rage_damage, get_touch_of_magic_bonus, list_class_spells, find_entry_names_in_text, get_remaining_opponents_text, process_are_opponents_defeated, add_explanation_last_opponent_health, get_special_abilities_json_names, get_use_special_ability_stat, create_group, has_matching_token_image, create_section_obj, get_char_obj_healing, get_battle_info_combatants, Cast_Spell_Object
 
@@ -49,10 +50,9 @@ ai_path = "ai/"
 ai_config_path = f"{ai_path}_config/"
 ai_config_file_path = f"{ai_config_path}config.json"
 
-chat_mode_message_history_path = f"{ai_path}chat_mode_message_history/"
+chat_mode_messages_history_path = f"{ai_path}chat_mode_messages_history/"
 chat_history_file = 'messages_history.json'
 dnd_history_file = 'messages_history_dnd.json'
-dnd_with_chat_history_file = 'messages_history_dnd_chat_mode.json'
 archives_dnd_path = f'{ai_path}_archives_dnd/'
 stories_history_path = f'{archives_dnd_path}stories_history.json'
 root_music_path = f"{root_path}music"
@@ -63,7 +63,7 @@ blacklist_path = f'{ai_path}blacklist'
 character_sheet_html_file = "character_sheet.html"
 
 # if a folder doesn't exist, create it
-create_folders([archives_dnd_path, current_story_path, chat_mode_message_history_path, root_music_path, current_convo_path, current_convo_debug_path, blacklist_path])
+create_folders([archives_dnd_path, current_story_path, chat_mode_messages_history_path, root_music_path, current_convo_path, current_convo_debug_path, blacklist_path])
 
 app = typer.Typer()
 
@@ -152,13 +152,19 @@ def set_generated_text_emotions(generated_text_emotions):
 def get_messages_history(filename):
     # Chat history stays in the main folder (for now)
     if filename == chat_history_file:
-        return read_json(chat_mode_message_history_path + filename)
+        chat_history_file_path = chat_mode_messages_history_path + filename
+        # create file if doesn't exist
+        if not os.path.exists(chat_history_file_path):
+            write_json(chat_history_file_path, [])
+            return []
+        else:
+            return read_json(chat_history_file_path)
     else:
         return get_story_file(filename)
     
 def set_messages_history(filename, messages_history):
     if filename == chat_history_file:
-        write_json(chat_mode_message_history_path + filename, messages_history)
+        write_json(chat_mode_messages_history_path + filename, messages_history)
     else:
         write_json(current_story_path + filename, messages_history)
 
@@ -1019,8 +1025,7 @@ def create_story(char_name = None, scenario_id = None, use_generic_scenario = No
         "is_game_won": False,
         "is_game_lost": False,
         "game_over_quest": "",
-        "game_over_time": None,
-        "unrelated_or_refused_retries": 0
+        "game_over_time": None
     }
     
     # Del unused fields (included before to have the right key order)
@@ -1127,7 +1132,7 @@ def create_story(char_name = None, scenario_id = None, use_generic_scenario = No
 
     print_log(f"NEW STORY: {char_description} {scenario}")
 
-    current_story_file_names = ["generated_text_emotions.json", "messages_history_dnd.json", 'messages_history_dnd_chat_mode.json', "combatant_sheets.json", "previous_battles_history.json"]
+    current_story_file_names = ["generated_text_emotions.json", "messages_history_dnd.json", "combatant_sheets.json", "previous_battles_history.json"]
 
     # init the files
     for file_name in current_story_file_names:
@@ -1167,7 +1172,7 @@ def count_username_instances(json_array, username):
     return count
 
 # Remove "message history" case insensitive
-def remove_message_history_prefix(text):
+def remove_messages_history_prefix(text):
     pattern = r"\*?(message history:)\*?\s?"
 
     # Replace the pattern with an empty string using re.IGNORECASE for case insensitivity
@@ -1390,7 +1395,7 @@ def update_story_main_quest_completed(main_quests_completed, current_story):
         current_story["game_over_quest"] = main_quests_completed[-1]
 
 # Set a quest as completed
-def validate_is_main_quest_completed(response_content):       
+def validate_is_main_quest_completed(response_content, current_story):       
     global main_quests_completed_eval
 
     quest_completed_obj = extract_json_from_response("GetMainQuestCompleted", response_content)
@@ -1405,13 +1410,12 @@ def validate_is_main_quest_completed(response_content):
         return
     
     print_log(f"Quest completed prompt:{response_content}")
-    current_story = get_current_story()
 
     # Complete or fail, both main quests and side quests
     main_quests_completed_eval = complete_quests(completed_quests, current_story, is_main_quests = True)
 
 # Set a quest as completed
-def validate_is_quest_completed(response_content):                 
+def validate_is_quest_completed(response_content, current_story):                 
     quest_completed_obj = extract_json_from_response("GetQuestCompleted", response_content)
     if quest_completed_obj is None:
         return None
@@ -1423,7 +1427,6 @@ def validate_is_quest_completed(response_content):
         return
     
     print_log(f"Quest completed prompt:{response_content}")
-    current_story = get_current_story()
 
     global quests_completed_eval
 
@@ -1438,14 +1441,14 @@ def add_dot_if_no_punctuation(text):
     return text
 
 def remove_quest_prefixed_text(text):
-    # Remove the portion in square brackets that contains the word "quest" (case insensitive)
-    text = re.sub(r'\[(?i).*?quest.*?\]', '', text)
-
-    # Remove colon and any leading spaces from the start
-    text = re.sub(r'^\s*:', '', text).strip()
-
-    # Remove 'quest' (if followed by a number or ':') or just numbers or ':' from the start of the string
-    return re.sub(r'^(?i)(quest(?=[0-9:])|[0-9:])*', '', text)
+     # Remove any text within square brackets that contains the word "quest" (case-insensitive)
+    text = re.sub(r'(?i)\[.*?quest.*?\]', '', text)
+    
+    # Remove any prefix that starts with "quest" or numbers and colons (case-insensitive)
+    text = re.sub(r'(?i)^(quest(?=[0-9:])|[0-9:])*', '', text)
+    
+    # Strip leading and trailing whitespace
+    return text.strip()
 
 def find_existing_quest(new_quest, current_story):
     # Important : Keep in mind some quests are json obj and others not (main quests)
@@ -1458,7 +1461,7 @@ def find_existing_quest(new_quest, current_story):
         
     return None
 
-def validate_quest_given(response_content):                 
+def validate_quest_given(response_content, current_story):                 
     quest_given_obj = extract_json_from_response("GetQuestGiven", response_content)
     if quest_given_obj is None:
         return None
@@ -1473,7 +1476,6 @@ def validate_quest_given(response_content):
     global quests_added_eval
     quests_added_eval = []
 
-    current_story = get_current_story()
     new_quests = []
     updated_quest = False
 
@@ -1642,7 +1644,7 @@ def add_remove_from_inventory(current_inventory, current_currency, is_added_or_r
 
             remove_from_inventory_eval(quantity, name)
 
-def update_inventory(response_content):                 
+def update_inventory(response_content, current_story):                 
     inventory_obj = extract_json_from_response("GetInventory", response_content)
     if inventory_obj is None:
         return None
@@ -1655,13 +1657,14 @@ def update_inventory(response_content):
     is_added_or_removed_from_inventory = validate_unspecified(inventory_obj.get("added_or_removed_from_inventory", []), True)
 
     # Add / remove items from the inventory
-    current_story = get_current_story()
+    inventory = copy.deepcopy(current_story["inventory"])
+    currency = copy.deepcopy(current_story["currency"])
 
     # Update the inventory list and currency dictionary
-    add_remove_from_inventory(current_story["inventory"], current_story["currency"], is_added_or_removed_from_inventory)#, removed_from_inventory)
+    add_remove_from_inventory(inventory, currency, is_added_or_removed_from_inventory)#, removed_from_inventory)
 
-    inventory_eval["inventory"] = current_story["inventory"]
-    inventory_eval["currency"] = current_story["currency"]
+    inventory_eval["inventory"] = inventory
+    inventory_eval["currency"] = currency
 
 def location_is_changed(location, current_location):
     if location is None:
@@ -1669,7 +1672,7 @@ def location_is_changed(location, current_location):
 
     return location != "" and not any(location.lower().startswith(prefix) for prefix in ["unchanged", "unknown", "none"]) and location.lower() != current_location.lower()
 
-def update_location(response_content):                 
+def update_location(response_content, current_story):                 
     location_obj = extract_json_from_response("GetNewLocation", response_content)
     if location_obj is None:
         return None
@@ -1688,8 +1691,6 @@ def update_location(response_content):
         return
 
     # Validate if the new main or sub location is unchanged
-
-    current_story = get_current_story()
 
     new_main_location = new_main_location.strip(" .,!?").replace("\n", " ") if new_main_location is not None else None
     new_sub_location = new_sub_location.strip(" .,!?").replace("\n", " ") if new_sub_location is not None else None
@@ -1723,7 +1724,7 @@ def update_location(response_content):
         "sub_location": new_sub_location if new_sub_location_is_changed else None
     }
 
-def update_location_category(response_content, setup_dnd):                 
+def update_location_category(response_content, setup_dnd, current_story):                 
     location_obj = extract_json_from_response("GetLocationCategory", response_content)
     if location_obj is None:
         return None
@@ -1736,7 +1737,6 @@ def update_location_category(response_content, setup_dnd):
         print(f"ERROR: Location category found in the text: {response_content}")
         return
     
-    current_story = get_current_story()
     location_category = location_category.strip(" .,!?").replace("\n", " ")
 
     if not location_is_changed(location_category, current_story.get("location_category", "")) :
@@ -1744,7 +1744,6 @@ def update_location_category(response_content, setup_dnd):
         return
     
     print_log(f"New location category: {location_category}. Found in prompt:{response_content}")
-    current_story = get_current_story()
     
     # LOCATION CATEGORY
     categories = setup_dnd["location_categories"].split(", ")
@@ -1938,7 +1937,7 @@ def update_story_rest_changes(is_long_rest, is_short_rest, current_story, setup_
 
     return eval_info
 
-def update_rest(response_content, setup_dnd):     
+def update_rest(response_content):     
     rest_obj = extract_json_from_response("GetIsRest", response_content)
     if rest_obj is None:
         return None
@@ -1966,11 +1965,12 @@ def update_rest(response_content, setup_dnd):
         print_log(f"Short rest detected. Found in prompt:{response_content}")
         update_rest_eval["is_short_rest"] = True
 
-    current_story = get_current_story()
+    # To test the modifications to current story, run the evals instead (otherwise, would modify the story in the middle of the convo).
 
-    # IMPORTANT : Don't save the changes to the story here, only for test purposes.
+    # Note : Don't save the changes to the story here, only for test purposes.
         # This func will be called again in create_eval_convo where the story will be updated
-    update_story_rest_changes(is_long_rest, is_short_rest, current_story, setup_dnd)
+    # current_story = get_current_story()
+    # update_story_rest_changes(is_long_rest, is_short_rest, current_story, setup_dnd)
 
 def process_info_text(info_section, separator_label):
     intro_messages = info_section.split(separator_label)
@@ -2191,7 +2191,7 @@ def create_emotions(username, current_game, convo_obj_filepath, messages_history
     current_msg_content = messages_history[-1]["content"]
     prefix = "assistant" if is_last_msg_assistant(messages_history) else "narrator" # Do it before the call, otherwise a new msg might have been added in the meantime.
 
-    _, _, text_segment_objs = send_message("", username, current_game=current_game, custom_action="get_emotions", filename=convo_obj_filepath, override_messages_history=messages_history, override_current_story=current_story, extra_info = extra_info) # type: ignore
+    _, _, text_segment_objs = send_message("", username, messages_history, current_story, current_game=current_game, custom_action="get_emotions", filename=convo_obj_filepath, extra_info = extra_info) # type: ignore
 
     convo_obj = read_json(convo_obj_filepath)
 
@@ -2322,8 +2322,16 @@ def get_specialization_text(current_story, setup_dnd):
 
     return specialization_text.replace("#specialization#", specialization)
 
-def create_current_memory_story_message(setup_dnd, config_dnd, current_story, skip_quests = False, skip_scenario = False, skip_inventory = False, chat_with_viewer = False, include_secret_info=False, skip_location=False, include_inventory_msg=False, skip_proficiencies = False, skip_char_description = False, skip_rage = False, add_personality = False, is_update_inventory = False): #, include_nb_attacks = False):
+def create_current_memory_story_message_static(setup_dnd, current_story, skip_scenario = False, chat_with_viewer = False, skip_proficiencies = False, skip_char_description = False, add_personality = False):
     memories = []
+    
+    if chat_with_viewer:
+        has_setup_zero = os.path.isfile(f'{ai_config_path}setup_zero.json')
+        streaming_or_playing = "streaming" if has_setup_zero else "playing"
+        on_stream = " on youtube" if has_setup_zero else ""
+
+        chat_with_viewer_text = setup_dnd["chat_with_viewer_message"].replace("#streaming_or_playing#", streaming_or_playing).replace("#on_stream#", on_stream)
+        memories.append(chat_with_viewer_text)
 
     if not skip_char_description:
         char_description = current_story["char_description"] 
@@ -2348,26 +2356,38 @@ def create_current_memory_story_message(setup_dnd, config_dnd, current_story, sk
 
     if not skip_scenario:
         memories.append(current_story["scenario"])
+        
+    memories_text = " ".join(memories)
 
+    return format_msg_oai("user", memories_text)
+
+def create_current_memory_story_message_dynamic(setup_dnd, config_dnd, current_story, skip_quests = False, skip_inventory = False, chat_with_viewer = False, include_secret_info=False, skip_location=False, include_inventory_msg=False, skip_proficiencies = False, skip_rage = False, skip_intro = False, is_update_inventory = False): 
+    memories = []
+
+    if not skip_intro:
+        char_intro = "You are " + current_story["char_summary"] + "."
+        memories.append(char_intro)
+
+    if current_story["proficiencies"] != "" and not skip_proficiencies:
+        memories.append(current_story["proficiencies"])
+        
     # RAGE
     if not skip_rage:
         rage_msg = get_rage_message(current_story, setup_dnd)
         if rage_msg is not None:
             memories.append(rage_msg)
-
+    
     if current_story.get("spellcasting_ability"):
-        # Check if any spell slots remaining
+        # Check how many spell slots remaining
         has_remaining_spell_slots = any([slot > 0 for slot in current_story["spell_slots"]])
-        lowest_no_upcast_spell_slot = find_lowest_no_upcast_slot(current_story["spell_slots"])
-        # Return the highest spell level (index + 1 with the a non zero value)
         max_spell_level = get_max_spell_level(current_story)
+        
+        has_any_missing_spell_slots = any([slot == 0 for x, slot in enumerate(current_story["spell_slots"]) if x <= max_spell_level - 1])
 
-        if lowest_no_upcast_spell_slot is not None and lowest_no_upcast_spell_slot <= max_spell_level:
-            memories.append(setup_dnd["no_spell_slots_above_level_remaining_message"].replace("#level#", str(lowest_no_upcast_spell_slot)))
+        if not has_any_missing_spell_slots:
+            memories.append(setup_dnd["max_spell_level_message"].replace("#level#", str(max_spell_level)))
         elif not has_remaining_spell_slots:
             memories.append(setup_dnd["no_spell_slots_remaining_message"])
-        else:
-            memories.append(setup_dnd["max_spell_level_message"].replace("#level#", str(max_spell_level)))
 
     # Lay on hands
     if current_story.get("lay_on_hands_hp") is not None and current_story.get("lay_on_hands_hp") == 0:
@@ -2383,9 +2403,12 @@ def create_current_memory_story_message(setup_dnd, config_dnd, current_story, sk
 
     # Second wind or action surge used
     if has_used_second_wind or has_used_action_surge:
-        second_wind_text = "Second Wind"
-        action_surge_text = "Action Surge"
-        joined_text = join_with_and([second_wind_text, action_surge_text], "or")
+        fighter_features_used = []
+        if has_used_second_wind:
+            fighter_features_used.append("Second Wind")
+        if has_used_action_surge:
+            fighter_features_used.append("Action Surge")
+        joined_text = join_with_and(fighter_features_used, "or")
 
         memories.append(setup_dnd["fighter_features_used_message"].replace("#used_features#", joined_text))
 
@@ -2472,14 +2495,6 @@ def create_current_memory_story_message(setup_dnd, config_dnd, current_story, sk
 
     memories_text = " ".join(memories)
 
-    if chat_with_viewer:
-        has_setup_zero = os.path.isfile(f'{ai_config_path}setup_zero.json')
-        streaming_or_playing = "streaming" if has_setup_zero else "playing"
-        on_stream = " on youtube" if has_setup_zero else ""
-
-        chat_with_viewer_text = setup_dnd["chat_with_viewer_message"].replace("#streaming_or_playing#", streaming_or_playing).replace("#on_stream#", on_stream)
-        memories_text = chat_with_viewer_text + memories_text
-
     return format_msg_oai("user", memories_text)
 
 def get_secret_info_memory(current_story, setup_dnd):
@@ -2525,10 +2540,6 @@ def get_dnd_memory_and_author_note_additions(current_story, roll = None, is_game
     if current_story["proficiencies"] != "":
         current_memories.append(current_story["proficiencies"])
 
-    # Location
-    if current_story["original_location"] != "":
-        current_memories.append(setup_dnd["location_message"].replace("#location#", current_story["original_location"])) # Add location to the description (but don't show it to the viewers)
-
     # Scenario
     current_memories.append(current_story["scenario"]) 
 
@@ -2536,16 +2547,6 @@ def get_dnd_memory_and_author_note_additions(current_story, roll = None, is_game
     rage_msg = get_rage_message(current_story, setup_dnd)
     if rage_msg is not None:
         current_memories.append(rage_msg)
-
-    # CURRENT LOCATION
-    current_location = get_current_location(current_story, setup_dnd)
-    if current_location != "":
-        current_memories.append(current_location)
-
-    # IMPORTANT CHARACTERS
-    important_characters = get_important_characters(current_story, setup_dnd)
-    if important_characters != "":
-        current_memories.append(important_characters)
 
     # Secret info (add to memory, unless we're reaching conclusion, in which case add to author's note
     if current_turn >= set_secret_info_memory_on_turn and current_turn < start_concluding_story_on_turn and current_story["secret_info"] is not None and current_story["secret_info"] != "":
@@ -2585,6 +2586,20 @@ def get_dnd_memory_and_author_note_additions(current_story, roll = None, is_game
     inventory_texts.append(get_retrieved_from_inventory_text(current_story, setup_dnd, inventory, True))
 
     current_author_note_additions.append(" ".join(inventory_texts))
+
+    # Location
+    if current_story["original_location"] != "":
+        current_author_note_additions.append(setup_dnd["location_message"].replace("#location#", current_story["original_location"])) # Add location to the description (but don't show it to the viewers)
+
+    # CURRENT LOCATION
+    current_location = get_current_location(current_story, setup_dnd)
+    if current_location != "":
+        current_author_note_additions.append(current_location)
+
+    # IMPORTANT CHARACTERS
+    important_characters = get_important_characters(current_story, setup_dnd)
+    if important_characters != "":
+        current_author_note_additions.append(important_characters)
 
     # Add secret info with more weight as we near the conclusion (moved it from memory to author's note)
     if current_turn >= start_concluding_story_on_turn and current_story["secret_info"] is not None and current_story["secret_info"] != "":
@@ -2690,10 +2705,10 @@ def replace_placeholders_for_story_param(story_parameter_name, placeholders, act
 
     return action_prompt
 
-def append_roll_text_to_history(roll_text, messages_history):
+def append_roll_text_to_history(roll_text, messages_history, current_turn):
     if roll_text is not None:
         roll_info_message = f"[{roll_text}]"
-        messages_history.append(format_msg_oai("roll_text", roll_info_message)) # Insert before the last narrator msg (before the ai answer)
+        messages_history.append(format_msg_oai("roll_text", roll_info_message, "dnd", current_turn)) # Insert before the last narrator msg (before the ai answer)
 
 def create_error_log(error_name, error_msg, response_message, username, is_game):
     print_log(error_msg)
@@ -2812,6 +2827,8 @@ def end_battle(current_story, prev_battle_info, is_narrator):
     set_previous_battles_history(battles_history)
 
     del current_story["battle_info"]
+    
+    current_story["last_battle_end_turn"] = current_story["current_turn"]
 
     if is_narrator:
         global battle_end_eval
@@ -2862,9 +2879,9 @@ def create_combatant_sheets(username, current_game, messages_history, current_st
         extra_info = group
 
         for custom_action in group_sheets:
-            args.append({'current_game': current_game, 'custom_action': custom_action, 'override_messages_history': messages_history, 'override_current_story': current_story, 'extra_info': extra_info})
+            args.append({'current_game': current_game, 'custom_action': custom_action, 'extra_info': extra_info})
 
-    results = create_thread_send_message(username, args = args)
+    results = create_thread_send_message(username, messages_history, current_story, args = args)
 
     if len(results) < len(combatant_groups) * len(combatant_sheet_action_results):
         print("ERROR: Wrong number of results for combatant sheets.")
@@ -2946,6 +2963,8 @@ def post_process_battle_info(combatants, current_sheets):
 def get_available_spells_text(current_story):
     class_spells_dict, domains_spells_dict, _ = list_class_spells(current_story, False)
     spells_texts = []
+    
+    lowest_no_upcast_spell_slot = find_lowest_no_upcast_slot(current_story["spell_slots"])
 
     for spell_level, spell_list in class_spells_dict.items():
         domain_spells = domains_spells_dict.get(spell_level, [])
@@ -2956,13 +2975,29 @@ def get_available_spells_text(current_story):
 
         all_spells_list = spell_list + domain_spells
         spells_text = join_with_comma(all_spells_list)
-        spells_texts.append(f"Level {spell_level}: {spells_text}")
+        
+        spell_level_int = int(spell_level)
+        spell_slots_text = ""
+        # Only add the remaining spell slots if the spell level is greater than 0 (0 = cantrips)
+        if spell_level_int > 0:
+            nb_spell_slots_remaining = current_story['spell_slots'][spell_level_int - 1] # Spell slots array is 0-indexed
+            can_cast_anyways_text = ", but can upcast" if nb_spell_slots_remaining == 0 and spell_level_int <= lowest_no_upcast_spell_slot else ""
+            
+            # If can't upcast, check if can use sorcery points to cast it
+            if nb_spell_slots_remaining == 0 and spell_level_int > lowest_no_upcast_spell_slot:
+                sorcery_points = current_story.get("sorcery_points", 0)
+                sorcery_points_cost = get_sorcery_points_cost(spell_level_int)
+                can_cast_anyways_text = ", but can cast with sorcery points" if sorcery_points >= sorcery_points_cost else ""
+            
+            spell_slots_text = f" ({nb_spell_slots_remaining} remaining{can_cast_anyways_text})"
+            
+        spells_texts.append(f"Level {spell_level}{spell_slots_text}: {spells_text}")
     
     final_spells_text = "Available spells list: " + "\n".join(spells_texts)
     return final_spells_text
 
 def add_status_to_battle_info(battle_info, username, current_game, messages_history, current_story):
-    _, _, result_tuples = send_message("", username, current_game=current_game, custom_action="get_status_effects", override_current_story=current_story, override_messages_history=messages_history)
+    _, _, result_tuples = send_message("", username, messages_history, current_story, current_game=current_game, custom_action="get_status_effects")
 
     if result_tuples is None:
         print("ERROR: No status effects found for battle info.")
@@ -2982,7 +3017,7 @@ def add_status_to_battle_info(battle_info, username, current_game, messages_hist
                 opponent["status_effects"] = status
 
 def add_allies_to_battle_info(battle_info, username, current_game, messages_history, current_story):
-    _, _, result = send_message("", username, current_game=current_game, custom_action="get_allied_characters", override_current_story=current_story, override_messages_history=messages_history)
+    _, _, result = send_message("", username, messages_history, current_story, current_game=current_game, custom_action="get_allied_characters")
 
     if result is None:
         print_log("No results found for get_allied_characters in battle info.")
@@ -3021,7 +3056,7 @@ def add_to_roll_info(section_obj, info_to_add, insert_at_start = False):
     return section_obj
 
 def add_additional_opponents(battle_info, username, current_game, messages_history, current_story):
-    _, _, additional_battle_info = send_message("", username, current_game=current_game, custom_action="get_battle_info_additional_opponents", override_current_story=current_story, override_messages_history=messages_history)
+    _, _, additional_battle_info = send_message("", username, messages_history, current_story, current_game=current_game, custom_action="get_battle_info_additional_opponents")
 
     if additional_battle_info is not None:
         battle_info["opponents"] = additional_battle_info["opponents"]
@@ -3050,8 +3085,10 @@ def update_battle_info(current_story, username, current_game, messages_history, 
         battle_info = None
 
     # Create battle info (only if ai or server intends to start it)
-    if battle_info is None and start_battle:        
-        _, _, battle_info = send_message("", username, current_game=current_game, custom_action="get_battle_info", override_messages_history=messages_history, override_current_story=current_story)
+    if battle_info is None and start_battle:
+        start_loading_animation()
+        
+        _, _, battle_info = send_message("", username, messages_history, current_story, current_game=current_game, custom_action="get_battle_info")
 
         # Add battle (no battle status when starting a new battle, only when continuing it)
         if battle_info is not None: # and battle_info["battle_status"] == "ongoing":
@@ -3082,17 +3119,23 @@ def update_battle_info(current_story, username, current_game, messages_history, 
                 create_combatant_sheets(username, current_game, messages_history, current_story, allies)
 
                 post_process_battle_info(allies, get_combatant_sheets())
-                
+            
+            stop_loading_animation()
+            
             print_hp_info(current_story, True, True, True)
-
+        else:
+            stop_loading_animation()
+        
     # Update the current battle info
     elif battle_info is not None:
+        start_loading_animation()
+        
         # Update the status (ex: surprise), but only for the first enemy turn
             # Reason: The enemy might be considered initially surprised (before the mc do a skill check), but then notices the mc before they start their turn (ex: mc failed stealth check)
         status_function_args = (add_status_to_battle_info, [battle_info, username, current_game, messages_history, current_story], {}) if battle_info["enemy_turn"] == 0 else None 
 
         functions_with_args = [
-            (send_message, [username], {"current_game": current_game, "custom_action": "get_updated_battle_info", "override_current_story": current_story, "override_messages_history": messages_history}),
+            (send_message, ["", username, messages_history, current_story], {"current_game": current_game, "custom_action": "get_updated_battle_info"}),
             status_function_args
         ]
         results = run_tasks_in_parallel(functions_with_args)
@@ -3118,7 +3161,7 @@ def update_battle_info(current_story, username, current_game, messages_history, 
         # Continue battle
         elif can_add_additional_opponents:
             if additional_opponents is not None and len(additional_opponents) > 0:
-                _, _, additional_battle_info = send_message("", username, current_game=current_game, custom_action="get_battle_info_additional_opponents", override_current_story=current_story, override_messages_history=messages_history, extra_info=additional_opponents)
+                _, _, additional_battle_info = send_message("", username, messages_history, current_story, current_game=current_game, custom_action="get_battle_info_additional_opponents", extra_info=additional_opponents)
 
                 if additional_battle_info is not None:
                     battle_info["opponents"] = additional_battle_info["opponents"]
@@ -3135,6 +3178,8 @@ def update_battle_info(current_story, username, current_game, messages_history, 
 
                     # Remove duplicated named npc that could have been added by accident as an additional opponent
                     post_process_battle_info(battle_info["opponents"], get_combatant_sheets())
+
+        stop_loading_animation()
 
     return battle_info
 
@@ -3245,15 +3290,15 @@ def add_spell_list_to_action_prompt(action_prompt, sheet, opponent):
 
     return action_prompt
 
-def choose_combatants_actions(username, current_game, current_story, setup_dnd, combatant_sheets, battle_info, messages_history, is_opponent):
+def choose_combatants_actions(username, current_game, current_story, battle_info, messages_history, is_opponent):
     active_combatants, _ = get_incapacitated_combatants(battle_info, is_opponent, True)
     args = []
     
     for combatant in active_combatants:
         extra_info = (combatant, is_opponent)
-        args.append({'current_game': current_game, 'custom_action': "choose_combatant_action", 'override_messages_history': messages_history, 'override_current_story': current_story, 'extra_info': extra_info})
+        args.append({'current_game': current_game, 'custom_action': "choose_combatant_action", 'extra_info': extra_info})
 
-    results = create_thread_send_message(username, args = args)
+    results = create_thread_send_message(username, messages_history, current_story, args = args)
 
     if len(results) < len(active_combatants):
         print("ERROR: Wrong number of results for choose combatants actions.")
@@ -3291,7 +3336,10 @@ def get_new_convo_filename(is_game, is_chat_dnd, current_story, filename_arg = N
     return filepath, filename
 
 # Run functions in parallel
-def run_tasks_in_parallel(functions_with_args):
+def run_tasks_in_parallel(functions_with_args, add_loading_animation = False):
+    if add_loading_animation:
+        start_loading_animation()
+        
     with concurrent.futures.ThreadPoolExecutor() as executor:
         futures = []
 
@@ -3314,6 +3362,9 @@ def run_tasks_in_parallel(functions_with_args):
                 # Append None or a custom error message to results if there's an exception
                 print(f"Error occurred: {traceback.format_exc()}")
                 results.append(None)
+
+    if add_loading_animation:
+        stop_loading_animation()
 
     return results
 
@@ -3480,7 +3531,7 @@ def print_limited_resources(current_story):
     limited_resources = get_limited_resources_triples(current_story)
     
     if len(limited_resources) > 0 or current_story.get("spell_slots") is not None:
-        print_special_text("\n#bold#Available abilities:#bold#")
+        print_special_text("\n#bold#Abilities:#bold#")
         for name, part1, part2 in limited_resources:
             # If part2 is a number
             if isinstance(part2, int) or isinstance(part2, float):
@@ -3521,25 +3572,34 @@ def print_story_properties(current_story):
     
     print_hp_info(current_story, True, True, True)   
 
-# Get the last x*2 messages from chat_messages_history, where x is either unrelated_or_refused_retries or the nb of messages to include after game won or lost
-def get_current_turn_chat_messsages(chat_messages_history, nb_chat_turns_to_include):
-    return chat_messages_history[-(nb_chat_turns_to_include * 2):] if nb_chat_turns_to_include > 0 else []
+# Get the last x*2 messages from messages_history, where x is either unrelated_or_refused_retries or the nb of messages to include after game won or lost
+def get_current_turn_chat_messsages(messages_history_arg):
+    messages_history_chat_messages = []
+    
+    # Keep the previous chat messages block (until the following dnd block)
+    for message in reversed(messages_history_arg):
+        if message["type"] == "chat":
+            messages_history_chat_messages.insert(0, message)
+        elif message["type"] == "dnd" and len(messages_history_chat_messages) > 0: # Don't break if no chat messages yet
+            break
 
-def process_previous_chat_msg(current_story, setup_dnd):
-    nb_chat_turns_to_add = current_story.get("unrelated_or_refused_retries", 0) + 1 # only 1 turn if no retries
+    return copy.deepcopy(messages_history_chat_messages)
 
-    chat_messages_history = get_messages_history(dnd_with_chat_history_file)
-    previous_messages = get_current_turn_chat_messsages(chat_messages_history, nb_chat_turns_to_add)
+def process_previous_chat_msg(setup_dnd, messages_history):
+    chat_messages = get_current_turn_chat_messsages(messages_history)
 
     chat_msg_recollections = []
+    nb_chat_turns = len(chat_messages) // 2
 
-    for x in range(nb_chat_turns_to_add):
-        is_last_turn = x == nb_chat_turns_to_add - 1
-        user_msg_index = x*2
-        user_msg_answer_index = user_msg_index + 1
+    # Process chat messages in groups of 2 (user msg + ai answer)
+    for x in range(nb_chat_turns):
+        is_last_turn = x == nb_chat_turns - 1
+        
+        chat_message = chat_messages[x*2]
+        chat_message_answer = chat_messages[x*2 + 1]
 
-        user_msg_content = previous_messages[user_msg_index]["content"]
-        user_msg_answer_content = previous_messages[user_msg_answer_index]["content"]
+        user_msg_content = chat_message["content"]
+        user_msg_answer_content = chat_message_answer["content"]
 
         # Remove all mentions of the user in the previous messages (should seem to come from the ai)
         user_username = extract_username_from_prefix(user_msg_content)
@@ -3587,7 +3647,7 @@ def process_previous_chat_msg(current_story, setup_dnd):
 def process_mc_roll_skill(username, current_game, current_story, setup_dnd, messages_history, using_special_ability):
     custom_action_skill = "get_roll_skill" if not using_special_ability else "get_roll_skill_special_ability"
 
-    _, _, roll_results = send_message("", username, current_game=current_game, custom_action=custom_action_skill, override_messages_history=messages_history, override_current_story=current_story)
+    _, _, roll_results = send_message("", username, messages_history, current_story, current_game=current_game, custom_action=custom_action_skill)
     roll_text, main_section_obj = process_roll_skill(roll_results, current_story, setup_dnd, using_special_ability)
     emotion_action_type = "skill"
 
@@ -3609,7 +3669,7 @@ def process_magic_target_oob(magic_obj: Cast_Spell_Object, current_story, userna
 
     group = create_group(magic_obj.target_identity, None, None, None, None, None, None)
     
-    _, _, sheet_stat_obj = send_message("", username, current_game=current_game, custom_action="create_combatant_sheet_stats", override_messages_history=messages_history, override_current_story=current_story, extra_info=group)
+    _, _, sheet_stat_obj = send_message("", username, messages_history, current_story, current_game=current_game, custom_action="create_combatant_sheet_stats", extra_info=group)
 
     if sheet_stat_obj is not None:
         print_log(f"Create new virtual combatant for spell target: {magic_obj.target_identity}")
@@ -3641,7 +3701,7 @@ def process_mc_action(chosen_action, username, current_game, current_story, setu
     if chosen_action == "spell":
         # Don't cast spell if no spellcasting ability
         if current_story.get("spellcasting_ability") is not None:
-            _, _, cast_spell_results = send_message("", username, current_game=current_game, custom_action="cast_spell", override_messages_history=messages_history, override_current_story=current_story)
+            _, _, cast_spell_results = send_message("", username, messages_history, current_story, current_game=current_game, custom_action="cast_spell")
             can_cast_spell = True
         else:
             cast_spell_results = None
@@ -3653,7 +3713,7 @@ def process_mc_action(chosen_action, username, current_game, current_story, setu
         emotion_action_type = "spell"
 
     elif chosen_action == "attacking":
-        _, _, roll_results = send_message("", username, current_game=current_game, custom_action="get_roll_attack", override_messages_history=messages_history, override_current_story=current_story)
+        _, _, roll_results = send_message("", username, messages_history, current_story, current_game=current_game, custom_action="get_roll_attack")
         roll_text, main_section_obj, target_location_unknown, targeted_opponents, last_attacked_opponents = process_roll_attack(roll_results, current_story, setup_dnd, combatant_sheets, using_smite, using_action_surge, using_reckless_attack, using_flurry_of_blows, using_patient_defense, using_bardic_inspiration) # Only melee attacks can be reckless
         emotion_action_type = "attacks"
         
@@ -3662,7 +3722,7 @@ def process_mc_action(chosen_action, username, current_game, current_story, setu
             roll_text, main_section_obj, emotion_action_type = process_mc_roll_skill(username, current_game, current_story, setup_dnd, messages_history, using_special_ability)
 
     elif chosen_action == "consumable_magic_item":
-        _, _, roll_results = send_message("", username, current_game=current_game, custom_action="use_item", override_messages_history=messages_history, override_current_story=current_story)
+        _, _, roll_results = send_message("", username, messages_history, current_story, current_game=current_game, custom_action="use_item")
 
         virtual_target_sheet = process_magic_target_oob(roll_results, current_story, username, current_game, messages_history)
 
@@ -3672,7 +3732,7 @@ def process_mc_action(chosen_action, username, current_game, current_story, setu
         if item_name_not_in_inventory:
             # Remove the prev msg from the history first, otherwise will just automatically add whatever item they tried to use.
             #This is to fix the issue where the item is in the vicinity, but not in the inventory
-            _, _, allow_item_not_in_inventory = send_message("", username, current_game=current_game, custom_action="item_is_within_reach", override_messages_history=messages_history[:-1], override_current_story=current_story, extra_info=item_name_not_in_inventory)
+            _, _, allow_item_not_in_inventory = send_message("", username, messages_history[:-1], current_story, current_game=current_game, custom_action="item_is_within_reach", extra_info=item_name_not_in_inventory)
 
             # Reprocess use_item, taking into account that the item don't need to be in the inventory this time.
             if allow_item_not_in_inventory:
@@ -3738,7 +3798,7 @@ def add_emotion_to_section(section, emotions):
                 action["expressions"] = get_action_emotion(emotions, character, len(section["characters"]), unique_action, len(character["unique_actions"]), action_index, len(unique_action["actions"]))
         
 
-def run_battle_turn(ai_new_msg, username, current_game, convo_obj_filepath, messages_history, current_story, setup_dnd, config, config_dnd, generate_next_convo_arg, has_valid_prev_chat_msg, start_battle_assistant = False):
+def run_battle_turn(ai_new_msg, username, current_game, convo_obj_filepath, messages_history, current_story, setup_dnd, config, config_dnd, generate_next_convo_arg, has_valid_prev_chat_msg, start_battle_assistant, current_turn):
     log_current_story(current_story, "start_run_battle_turn")
 
     # Add assistant emotions
@@ -3747,20 +3807,20 @@ def run_battle_turn(ai_new_msg, username, current_game, convo_obj_filepath, mess
     dnd_server_text = ""
     roll_text = None
     initial_hp = current_story["hp"]
-
+    
     # Parallelize the following functions
     functions_with_args = [
         # get_roll()
-        (send_message, ['', username], {'current_game': current_game, 'custom_action': 'get_roll', 'override_messages_history': messages_history, 'override_current_story': current_story}),
+        (send_message, ['', username, messages_history, current_story], {'current_game': current_game, 'custom_action': 'get_roll'}),
         # update_battle_info()
         (update_battle_info, [current_story, username, current_game, messages_history, start_battle_assistant], {})
     ]
 
     # Detect whether using something like action surge or second wind.
     if has_valid_prev_chat_msg and current_story["class"].lower() in ["fighter", "paladin", "barbarian", "monk", "sorcerer", "bard"]:
-        functions_with_args.append((send_message, ['', username], {'current_game': current_game, 'custom_action': 'get_answer_to_viewer_decisions', 'override_messages_history': messages_history, 'override_current_story': current_story}))
-
-    results = run_tasks_in_parallel(functions_with_args)
+        functions_with_args.append((send_message, ['', username, messages_history, current_story], {'current_game': current_game, 'custom_action': 'get_answer_to_viewer_decisions'}))
+        
+    results = run_tasks_in_parallel(functions_with_args, add_loading_animation=True)
     
     # Check if the results are correct
     if len(results[0]) != 3:
@@ -3777,9 +3837,9 @@ def run_battle_turn(ai_new_msg, username, current_game, convo_obj_filepath, mess
     roll_results = results[0][2]
 
     # Get the chosen action, if any
-    chosen_action = using_skill = using_action_surge = using_second_wind = using_smite = using_lay_on_hands = using_flurry_of_blows = using_patient_defense = switch_rage_status = using_reckless_attack = using_special_ability = using_heightened_spell = using_twinned_spell = using_bardic_inspiration = using_unsettling_words = None
+    chosen_action = using_skill = using_smite = using_lay_on_hands = using_action_surge = using_second_wind = using_flurry_of_blows = using_patient_defense = using_special_ability = using_heightened_spell = using_twinned_spell = using_bardic_inspiration = using_unsettling_words = switch_rage_status = using_reckless_attack = None
     if roll_results is not None:
-        chosen_action, using_skill, using_action_surge, using_second_wind, using_smite, using_lay_on_hands, using_flurry_of_blows, using_patient_defense, using_special_ability, using_heightened_spell, using_twinned_spell, using_bardic_inspiration, using_unsettling_words = roll_results.extract()
+        chosen_action, using_skill, using_smite, using_lay_on_hands, using_action_surge, using_second_wind, using_flurry_of_blows, using_patient_defense, using_special_ability, using_heightened_spell, using_twinned_spell, using_bardic_inspiration, using_unsettling_words = roll_results.extract()
 
     # Get the answer to viewer decisions
     if len(results) > 2 and len(results[2]) == 3:
@@ -3830,10 +3890,10 @@ def run_battle_turn(ai_new_msg, username, current_game, convo_obj_filepath, mess
 
     # Allies actions
     if battle_info is not None and len(battle_info.get("allies", [])) > 0:
-        functions_with_args.append((choose_combatants_actions, [username, current_game, current_story, setup_dnd, combatant_sheets, battle_info, messages_history, False], {}))
+        functions_with_args.append((choose_combatants_actions, [username, current_game, current_story, battle_info, messages_history, False], {}))
 
-    results = run_tasks_in_parallel(functions_with_args)
-
+    results = run_tasks_in_parallel(functions_with_args, add_loading_animation=True)
+    
     # Get new command from dnd
     roll_text, main_section_obj, emotion_action_type, targeted_opponents, last_successfully_attacked_opponents, using_patient_defense, using_bardic_inspiration = results[0]
 
@@ -3904,8 +3964,8 @@ def run_battle_turn(ai_new_msg, username, current_game, convo_obj_filepath, mess
 
         second_wind_char_obj = get_char_obj_healing(battle_info, current_story, "second wind", False, "main_second_wind", second_wind_intro_text, second_wind_text, is_opponent = False)
 
-        main_section_obj.get("characters", [])
-        main_section_obj["characters"].append(second_wind_char_obj)
+        # Add the second wind char obj to the main section obj, creating the list if it doesn't exist
+        main_section_obj["characters"] = main_section_obj.get("characters", []) + [second_wind_char_obj]
 
     main_section_obj, roll_text = update_roll_with_rage_text_and_info(main_section_obj, roll_text, rage_info, rage_text)
 
@@ -3926,24 +3986,24 @@ def run_battle_turn(ai_new_msg, username, current_game, convo_obj_filepath, mess
     # Add the rolltext to the history for emotions, otherwise it wouldn't be included
         # Only include the mc roll text, not the allies
     emotion_mc_history = copy.deepcopy(messages_history)
-    append_roll_text_to_history(roll_text_mc_emotions, emotion_mc_history)
+    append_roll_text_to_history(roll_text_mc_emotions, emotion_mc_history, current_turn)
 
     # Parallelize the following functions
     functions_with_args = [
         # send_text_command_dnd
-        (send_text_command_dnd, [[ai_new_msg], get_dnd_memory_and_author_note_additions(current_story, (roll_text, mc_turn_sections, chosen_action))], {}),
+        (send_text_command_dnd, [[ai_new_msg], get_dnd_memory_and_author_note_additions(current_story, (roll_text, mc_turn_sections, chosen_action)), messages_history], {}),
         # get_emotions_mc
-        (send_message, ['', username], {'current_game': current_game, 'custom_action': emotion_custom_action, 'override_messages_history': emotion_mc_history, 'override_current_story': current_story, 'extra_info': emotion_action_type})
+        (send_message, ['', username, emotion_mc_history, current_story], {'current_game': current_game, 'custom_action': emotion_custom_action, 'extra_info': emotion_action_type})
     ]
 
     # Add the emotions for the allies turn if there are any.
     if roll_text_for_allies_emotions is not None:
         emotion_allies_history = copy.deepcopy(messages_history)
-        append_roll_text_to_history(roll_text_for_allies_emotions, emotion_allies_history)
+        append_roll_text_to_history(roll_text_for_allies_emotions, emotion_allies_history, current_turn)
 
-        functions_with_args.append((send_message, ['', username], {'current_game': current_game, 'custom_action': "get_emotions_allies", 'override_messages_history': emotion_allies_history, 'override_current_story': current_story}))
+        functions_with_args.append((send_message, ['', username, emotion_allies_history, current_story], {'current_game': current_game, 'custom_action': "get_emotions_allies"}))
 
-    results = run_tasks_in_parallel(functions_with_args)
+    results = run_tasks_in_parallel(functions_with_args, add_loading_animation=True)
     
     if len(results) < 2:
         print("ERROR: Wrong number of results from concurrent call of send_text_command_dnd and get_emotions_mc in battle turn.")
@@ -3957,7 +4017,7 @@ def run_battle_turn(ai_new_msg, username, current_game, convo_obj_filepath, mess
         battle_info["battle_status"] = "retreated"
         
     # Add the emotions to the main convo's roll_info
-    mc_roll_info_emotions = results[1][0] if results[1][0] is not None else [] # First element of the send_message result is the emotions
+    mc_roll_info_emotions = results[1][0] if results[1][0] is not None else [] # First element of the result is the emotions
     add_emotion_to_section(main_section_obj, mc_roll_info_emotions)
     
     allies_roll_info_emotions = results[2][0] if len(results) >= 3 and results[2][0] is not None else []
@@ -3987,9 +4047,9 @@ def run_battle_turn(ai_new_msg, username, current_game, convo_obj_filepath, mess
     # User Msg
     if convo_user_msg != "":
         # If a roll occured, include the roll info right before the first narrator msg
-        append_roll_text_to_history(roll_text, messages_history)
+        append_roll_text_to_history(roll_text, messages_history, current_turn)
 
-        messages_history.append(format_msg_oai("user", convo_user_msg))
+        messages_history.append(format_msg_oai("user", convo_user_msg, "dnd", current_turn))
 
     # Get the narrator dnd msg emotions
     create_emotions_thread(username, current_game, convo_obj_filepath, messages_history, current_story, config)
@@ -4012,7 +4072,6 @@ def run_battle_turn(ai_new_msg, username, current_game, convo_obj_filepath, mess
     chosen_situation = None
 
     if battle_info is not None:
-        
         # Determine if surprised and isn't already surprised.
         enemy_is_surprised = are_opponents_surprised(battle_info) and not battle_info.get("enemy_is_surprised", False)
 
@@ -4043,7 +4102,7 @@ def run_battle_turn(ai_new_msg, username, current_game, convo_obj_filepath, mess
                 opponent["status_effects"] = None
 
     else:
-        _, _, result_obj = send_message("", username, current_game=current_game, custom_action="get_roll_narrator_saving_throw", override_current_story=current_story, override_messages_history=messages_history)
+        _, _, result_obj = send_message("", username, messages_history, current_story, current_game=current_game, custom_action="get_roll_narrator_saving_throw")
         chosen_situation = result_obj["chosen_situation"] if result_obj is not None else None
         has_narrator_roll = chosen_situation is not None
         
@@ -4055,14 +4114,14 @@ def run_battle_turn(ai_new_msg, username, current_game, convo_obj_filepath, mess
         emotion_opponents_action_type = opponent_section_obj = None
 
         if chosen_situation == "choose_opponents_actions":
-            combatant_containers = choose_combatants_actions(username, current_game, current_story, setup_dnd, combatant_sheets, battle_info, messages_history, True)
+            combatant_containers = choose_combatants_actions(username, current_game, current_story, battle_info, messages_history, True)
 
             narrator_roll_text, opponent_section_obj, total_dmg, last_attacked_allies = process_combatant_turn(current_story, setup_dnd, combatant_sheets, combatant_containers, True, using_reckless_attack, using_patient_defense, using_bardic_inspiration)
 
             emotion_opponents_action_type = "attacks" # Always attacks during battle, even if they cast spells
 
         elif chosen_situation == "saving_throw_required":
-            _, _, narrator_roll_results = send_message("", username, current_game=current_game, custom_action="get_roll_saving_throw", override_messages_history=messages_history, override_current_story=current_story)
+            _, _, narrator_roll_results = send_message("", username, messages_history, current_story, current_game=current_game, custom_action="get_roll_saving_throw")
             narrator_roll_text, opponent_section_obj, total_dmg = process_roll_saving_throw(narrator_roll_results, current_story, setup_dnd, combatant_sheets)
             emotion_opponents_action_type = "saving throw"
 
@@ -4101,7 +4160,7 @@ def run_battle_turn(ai_new_msg, username, current_game, convo_obj_filepath, mess
 
             # Add the rolltext to the history for emotions, otherwise it wouldn't be included
             opponents_emotion_history = copy.deepcopy(messages_history)
-            append_roll_text_to_history(narrator_roll_text, opponents_emotion_history)
+            append_roll_text_to_history(narrator_roll_text, opponents_emotion_history, current_turn)
 
             opponents_sections_objs = [opponent_section_obj] if opponent_section_obj is not None else []
 
@@ -4122,12 +4181,12 @@ def run_battle_turn(ai_new_msg, username, current_game, convo_obj_filepath, mess
             # Parallelize the following functions
             functions_with_args = [
                 # send_text_command_dnd
-                (send_text_command_dnd, [[ai_new_msg, dnd_server_text], get_dnd_memory_and_author_note_additions(current_story, (narrator_roll_text, opponents_sections_objs, chosen_situation), is_game_lost, is_narrator_response=True)], {}),
+                (send_text_command_dnd, [[ai_new_msg, dnd_server_text], get_dnd_memory_and_author_note_additions(current_story, (narrator_roll_text, opponents_sections_objs, chosen_situation), is_game_lost, is_narrator_response=True), messages_history], {}),
                 # get_emotions_opponents
-                (send_message, ['', username], {'current_game': current_game, 'custom_action': emotion_custom_action, 'override_messages_history': opponents_emotion_history, 'override_current_story': current_story, 'extra_info': emotion_opponents_action_type})
+                (send_message, ['', username, opponents_emotion_history, current_story], {'current_game': current_game, 'custom_action': emotion_custom_action, 'extra_info': emotion_opponents_action_type})
             ]
-
-            results = run_tasks_in_parallel(functions_with_args)
+            
+            results = run_tasks_in_parallel(functions_with_args, add_loading_animation=True)
             
             if len(results) != 2:
                 print("ERROR: Wrong number of results from concurrent call of send_text_command_dnd and get_emotions_opponents in battle turn.")
@@ -4158,7 +4217,7 @@ def run_battle_turn(ai_new_msg, username, current_game, convo_obj_filepath, mess
             roll_response_convo_obj["hp"] = original_hp
             roll_response_convo_obj["narrator_hp"] = current_story["hp"]
 
-            if add_additional_opponents_roll_response:
+            if battle_info is not None and add_additional_opponents_roll_response:
                 battle_info = add_additional_opponents(battle_info, username, current_game, messages_history, current_story)
 
             # Add updated battle info to convo obj
@@ -4167,9 +4226,9 @@ def run_battle_turn(ai_new_msg, username, current_game, convo_obj_filepath, mess
             write_json(roll_response_convo_obj_filepath, roll_response_convo_obj)
 
             # Add roll text right before 2nd narrator msg
-            append_roll_text_to_history(narrator_roll_text, messages_history)
+            append_roll_text_to_history(narrator_roll_text, messages_history, current_turn)
 
-            messages_history.append(format_msg_oai("user", dnd_narrator_roll_response))
+            messages_history.append(format_msg_oai("user", dnd_narrator_roll_response, "dnd", current_turn))
 
             convo_obj_filepath = roll_response_convo_obj_filepath # Return the last convo object filename
 
@@ -4183,12 +4242,52 @@ def run_battle_turn(ai_new_msg, username, current_game, convo_obj_filepath, mess
         convo_obj["generate_next_convo"] = True
         write_json(convo_obj_filepath, convo_obj)
 
-def send_message(new_user_msg_arg: str, username_arg: str = None, start_send_message_timestamp = None, history_file_arg = None, current_game=None, custom_action=None, custom_prefix=None, generate_next_convo_arg=True, state_switch=None, filename=None, moderate_user_msg=False, override_messages_history=None, override_current_story=None, force_gpt4 = False, add_music = False, extra_info = None) -> Tuple[Any, Any, Any]:
-    global no_gen
+def get_system_current_text(custom_action, is_chat_dnd, new_user_msg, setup, state_switch, stream_statistics):
+    system_current = current_date_prefix() # Add things like curent date and current events
 
-    # Always need a start send msg
-    if start_send_message_timestamp is None:
-        start_send_message_timestamp = time.time()
+    # Don't add current events to system messages and custom actions
+    if not auto_mode and custom_action is None and not is_chat_dnd and new_user_msg != "":
+        system_current = system_current + " " + get_current_event_prompt(new_user_msg, setup, state_switch == "dnd") # Skip some events when coming from ai dungeon
+    else:
+        global previous_user_prompt_web_info
+        previous_user_prompt_web_info = "" # Clear up previous web info when we switch to system.
+
+    # Add stream info to system messages
+    if is_stream:
+        info_up_to_date = stream_statistics["last_updated"] > time.time() - 180 # 3 minutes
+        if info_up_to_date:
+            concurrent_viewers = stream_statistics["concurrent_viewers"]
+            if concurrent_viewers > 0:
+                system_current = system_current + f" There are currently {concurrent_viewers} viewers watching the stream."
+        else:
+            system_current = system_current + f" There are currently an unknown number of viewers watching the stream."
+            
+    return system_current
+
+def return_messages_history_with_type(messages_history_arg: list, history_type: str):
+    messages_history_with_type = []
+    for message in messages_history_arg:
+        if message["type"] == history_type:
+            messages_history_with_type.append(message)
+    return messages_history_with_type
+
+# Loop over the messages, in reverse, and keep only the chat messages until max_added_chat_convo_msg_nb assistant msg (with type == "dnd")
+def return_messages_history_with_chat_limits(messages_history_arg: list, max_added_chat_turns_nb: int):
+    cleaned_messages_history = []
+    nb_dnd_assistant_msg = 0
+    for msg in reversed(messages_history_arg):
+        if msg["type"] == "dnd" and msg["role"] == "assistant":
+            nb_dnd_assistant_msg += 1
+        # Skip if it's a chat message and we reached the limit
+        elif msg["type"] == "chat" and nb_dnd_assistant_msg > max_added_chat_turns_nb:
+            continue
+                
+        cleaned_messages_history.insert(0, msg)
+        
+    return cleaned_messages_history
+
+def send_message(new_user_msg_arg: str, username_arg: str, messages_history_arg: list, current_story: dict, current_game=None, custom_action=None, custom_prefix=None, generate_next_convo_arg=True, state_switch=None, filename=None, moderate_user_msg=False, clone_messages_history=True, force_gpt4 = False, add_music = False, extra_info = None) -> Tuple[Any, Any, Any]:
+    global no_gen
 
     # Skip the msg entirely (ex: skip opponent spell sheet if not a spellcaster)
     if custom_action == "skip":
@@ -4208,12 +4307,6 @@ def send_message(new_user_msg_arg: str, username_arg: str = None, start_send_mes
     setup_dnd = read_json(f'{ai_config_path}dnd_setup.json')
     config_dnd = read_json(f'{ai_config_path}dnd_config.json')
 
-    current_story = override_current_story
-    if current_story is None:
-        current_story = get_current_story() if is_game or is_chat_dnd else None
-        print_log("Initial current_story")
-        log_current_story(current_story, "Init")
-
     roll_actions = ["get_roll", "get_roll_attack", "get_roll_skill", "get_roll_skill_special_ability", "get_roll_narrator_saving_throw", "cast_spell", "use_item", "item_is_within_reach", "get_roll_saving_throw", "get_battle_info", "get_updated_battle_info", "get_battle_info_additional_opponents", "get_allied_characters", "get_status_effects", "create_combatant_sheet_stats", "create_combatant_sheet_attacks", "create_combatant_sheet_spells", "choose_combatant_action", "get_answer_to_viewer_decisions"]
 
     initial_ai_turn_actions = ["get_roll", "get_roll_attack", "get_roll_skill", "get_roll_skill_special_ability", "get_roll_narrator_saving_throw", "cast_spell", "use_item", "get_roll_saving_throw"]
@@ -4232,15 +4325,9 @@ def send_message(new_user_msg_arg: str, username_arg: str = None, start_send_mes
     is_json_mode = is_user_convo_chat_dnd or is_normal_game_turn_dnd or custom_action is not None #(custom_action is not None and custom_action not in ["choose_music"])
 
     convo_obj_filepath, _ = get_new_convo_filename(is_game, is_chat_dnd, current_story, filename, custom_action)
-
-    if current_game == "dnd" or state_switch == "dnd":
-        history_file = dnd_history_file # if not custom_action == "get_emotions" else get_emotions_history_file
-    elif history_file_arg is not None:
-        history_file = history_file_arg
-    else:
-        history_file = chat_history_file
-
-    messages_history = get_messages_history(history_file) if override_messages_history is None else copy.deepcopy(override_messages_history) # Always clone when overriding, otherwise will modify the original)
+    
+    messages_history = copy.deepcopy(messages_history_arg) if clone_messages_history else messages_history_arg # Clone when overriding, otherwise will modify the original
+    
     config = get_ai_config()
 
     # Use setup zero if it exists.
@@ -4254,6 +4341,8 @@ def send_message(new_user_msg_arg: str, username_arg: str = None, start_send_mes
 
     # Current stream stats
     stream_statistics_path = f"{stream_path}/info/stream_statistics.json"
+    stream_statistics = None
+    
     if os.path.isfile(stream_statistics_path):
         stream_statistics = read_json(stream_statistics_path)
     
@@ -4286,38 +4375,16 @@ def send_message(new_user_msg_arg: str, username_arg: str = None, start_send_mes
         max_response_length = config["max_response_length_chat"]
 
     prompt = ""
-    user_current_story_message = None
+    current_memory_dynamic_message = None
 
     if not is_game:
         # setup prompt and system, use func argument of exist, default from file if not.
         prompt = custom_prefix if custom_prefix is not None else ""
-        system_current = current_date_prefix() # Add things like curent date and current events
-
-        # Don't add current events to system messages and custom actions
-        if not auto_mode and custom_action is None and not is_chat_dnd and new_user_msg != "":
-            system_current = system_current + " " + get_current_event_prompt(new_user_msg, setup, state_switch == "dnd") # Skip some events when coming from ai dungeon
-        else:
-            global previous_user_prompt_web_info
-            previous_user_prompt_web_info = "" # Clear up previous web info when we switch to system.
-
-        # Add stream info to system messages
-        if is_stream:
-            info_up_to_date = stream_statistics["last_updated"] > time.time() - 180 # 3 minutes
-            if info_up_to_date:
-                concurrent_viewers = stream_statistics["concurrent_viewers"]
-                if concurrent_viewers > 0:
-                    system_current = system_current + f" There are currently {concurrent_viewers} viewers watching the stream."
-            else:
-                system_current = system_current + f" There are currently an unknown number of viewers watching the stream."
-
-        system_current_message = format_msg_oai("system", system_current)
-
-        # Add the system msg about current events : 
-        messages.append(system_current_message)
 
         # Nb of messages already made by the user
-        current_chat_messages_history = get_messages_history(dnd_with_chat_history_file) if is_chat_dnd else messages_history
-        nb_messages_by_user = count_username_instances(current_chat_messages_history, username)
+        current_chat_messages_history_for_usernames = return_messages_history_with_type(messages_history, "chat")
+        #current_chat_messages_history = chat_messages_history_arg if chat_messages_history_arg is not None else messages_history
+        nb_messages_by_user = count_username_instances(current_chat_messages_history_for_usernames, username)
 
         if not has_setup_zero:
             system = setup["system"]
@@ -4368,9 +4435,20 @@ def send_message(new_user_msg_arg: str, username_arg: str = None, start_send_mes
             emotion_user_msg_hashtags += add_name_instruction
 
             messages.append(format_msg_oai("system", setup["system_3_chat_only_part_2"].replace("#emotion_user_msg_hashtags#", emotion_user_msg_hashtags)))
+            
+            # Add system msg at the end, to maximize cache usage
+            if not is_chat_dnd:
+                system_current = get_system_current_text(custom_action, is_chat_dnd, new_user_msg, setup, state_switch, stream_statistics)
+                
+                system_current_message = format_msg_oai("system", system_current)
+
+                # Add the system msg about current events : 
+                messages.append(system_current_message)
 
         if state_switch == "dnd":
-            messages.append(create_current_memory_story_message(setup_dnd, config_dnd, current_story, chat_with_viewer=True))
+            #messages.append(create_current_memory_story_message(setup_dnd, config_dnd, current_story, chat_with_viewer=True))
+            messages.append(create_current_memory_story_message_static(setup_dnd, current_story, skip_proficiencies=True, chat_with_viewer=True))
+            current_memory_dynamic_message = create_current_memory_story_message_dynamic(setup_dnd, config_dnd, current_story, chat_with_viewer=True)
             uplifting_note = setup_dnd["game_end_uplifting_note"]
 
             is_game_won = current_story["is_game_won"]
@@ -4416,8 +4494,10 @@ def send_message(new_user_msg_arg: str, username_arg: str = None, start_send_mes
                 else:
                     related_to_game_text = setup_dnd["related_to_game_ongoing"]
 
+                unrelated_or_refused_retries = count_prev_dnd_chat_msg(messages_history) # Will start with 0 for the first chat msg. then +1 for each retry
+
                 # Determine whether to move on if unrelated
-                move_on_if_unrelated_text = " " + setup_dnd["move_on_if_unrelated"] if current_story.get("unrelated_or_refused_retries", 0) == config_dnd["max_unrelated_or_refused_nb_retry"] else ""
+                move_on_if_unrelated_text = " " + setup_dnd["move_on_if_unrelated"] if unrelated_or_refused_retries == config_dnd["max_unrelated_or_refused_nb_retry"] else ""
 
                 # Specify not to add the viewer's name to the response
                 add_name_instruction = " " + setup_dnd["dont_add_name_instruction_dnd"] if nb_messages_by_user > 0 else "" # Don't name the viewer
@@ -4495,7 +4575,8 @@ def send_message(new_user_msg_arg: str, username_arg: str = None, start_send_mes
         messages.append(format_msg_oai("system", dnd_system3))
 
         # Create system msg for current story
-        user_current_story_message = create_current_memory_story_message(setup_dnd, config_dnd, current_story, include_inventory_msg=True) 
+        messages.append(create_current_memory_story_message_static(setup_dnd, current_story, skip_proficiencies=True))
+        current_memory_dynamic_message = create_current_memory_story_message_dynamic(setup_dnd, config_dnd, current_story, include_inventory_msg=True) 
 
     elif is_game and custom_action is not None:
 
@@ -4517,8 +4598,12 @@ def send_message(new_user_msg_arg: str, username_arg: str = None, start_send_mes
             if has_talent("rage", current_story) and custom_action == "get_answer_to_viewer_decisions":
                 skip_proficiencies = skip_char_description = skip_rage = True
 
-            user_current_story_message = create_current_memory_story_message(setup_dnd, config_dnd, current_story, skip_quests, skip_scenario, include_secret_info=False, skip_location=is_update_location, skip_proficiencies = skip_proficiencies, skip_char_description=skip_char_description, skip_rage=skip_rage, add_personality=add_personality, is_update_inventory=is_update_inventory)
-            messages.insert(0, user_current_story_message)
+            custom_action_memory_message_static = create_current_memory_story_message_static(setup_dnd, current_story, skip_scenario, skip_proficiencies = skip_proficiencies, add_personality=add_personality, skip_char_description=skip_char_description)
+            
+            custom_action_memory_message_dynamic = create_current_memory_story_message_dynamic(setup_dnd, config_dnd, current_story, skip_quests, include_secret_info=False, skip_location=is_update_location, skip_proficiencies = True, skip_rage=skip_rage, skip_intro = True,is_update_inventory=is_update_inventory)
+            
+            custom_action_memory_message = format_msg_oai("user", custom_action_memory_message_static["content"] + " " + custom_action_memory_message_dynamic["content"])
+            messages.insert(0, custom_action_memory_message)
 
             # Add current location as sepparate user msg (makes it obvious that's the location at the begining of the messages)
             if is_update_location:
@@ -4529,37 +4614,6 @@ def send_message(new_user_msg_arg: str, username_arg: str = None, start_send_mes
                     
     # Set where there actual messages start
     start_msg_index = len(messages)
-
-    chat_messages_history = [] 
-    
-    # Whether to include chat messages in the history (either here or in the message history loop further down below)
-    if current_story is not None and (is_chat_dnd or custom_action == "get_answer_to_viewer_decisions"):
-        chat_messages_history = get_messages_history(dnd_with_chat_history_file)
-        
-        # How many time the user msg has been refused or found to be unrelated in a row
-        unrelated_or_refused_retries = current_story.get("unrelated_or_refused_retries", 0)
-
-        is_discussion_after_game_won_or_lost = (current_story.get("is_game_won", False) or current_story.get("is_game_lost", False)) and current_story.get("game_over_time") is not None
-
-        nb_chat_turns_to_add = 0
-
-        # Include retry message if the last message was unrelated or refused
-        if is_chat_dnd and unrelated_or_refused_retries >= 1:
-            nb_chat_turns_to_add = unrelated_or_refused_retries
-        # How many back and forth chat msg to include after game won or lost
-        elif is_chat_dnd and is_discussion_after_game_won_or_lost:
-            nb_chat_turns_to_add = config_dnd["nb_chat_msg_duo_included_after_game_discussion"]
-        # Include the current turn chat messages for get_answer_to_viewer_decisions
-        elif not is_chat_dnd: 
-            nb_chat_turns_to_add = unrelated_or_refused_retries + 1
-
-        if nb_chat_turns_to_add > 0:
-            last_chat_messages = get_current_turn_chat_messsages(chat_messages_history, nb_chat_turns_to_add)
-            
-            # Append the last x*2 messages to messages
-            for chat_msg in last_chat_messages:
-                messages.append(chat_msg)
-                chat_messages_history.remove(chat_msg)
 
     new_message = None
  
@@ -5010,35 +5064,44 @@ def send_message(new_user_msg_arg: str, username_arg: str = None, start_send_mes
     
     total_length = count_tokens(messages) + max_response_length # Total current length of messages + max possible length of the response
     
-    if user_current_story_message is not None and is_game and custom_action is None:
-        total_length += count_tokens([user_current_story_message])
+    if current_memory_dynamic_message is not None and is_game and custom_action is None:
+        total_length += count_tokens([current_memory_dynamic_message])
 
     # Count the prompt in the length
     if prompt is not None and prompt != "":
         total_length += count_tokens([format_msg_oai("user", prompt)])
 
+    # Remove the chat messages for dnd game msg and for most custom actions
+    if is_game_dnd or (custom_action is not None and custom_action not in ["get_answer_to_viewer_decisions"]):
+        cleaned_messages_history = return_messages_history_with_type(messages_history, "dnd")
+    elif is_chat_dnd:
+        max_added_chat_turns_nb = config_dnd["max_added_chat_turns_nb"]
+        
+        # Limit the number of chat msg added to the convo (don't remove them in the remaining_messages_history loop below, otherwise the clamp function won't work)
+        cleaned_messages_history = return_messages_history_with_chat_limits(messages_history, max_added_chat_turns_nb)
+    else:
+        cleaned_messages_history = messages_history
+
     # Copy the array so we can remove a message one by one
-    remaining_messages_history = messages_history[:]
+    remaining_messages_history = cleaned_messages_history[:]
     inserted_messages_count = 0
-    nb_assistant_msg = 0
+    nb_dnd_assistant_msg = 0
+    new_total_length = total_length
     
     has_roll_text_msg = False
     is_first_loop = True
 
-    can_add_chat_convo_msg = is_chat_dnd and len(chat_messages_history) > 0
-    max_added_chat_convo_msg_nb = 3
-    added_chat_convo_msg_nb = 0
-
     # Add messages from history to the current convo until we reach the max token length
         # Alternatively, continue until the x last assistant msg or the x last history msg
-    while len(remaining_messages_history) > 0 and (assistant_msg_nb_limit is None or nb_assistant_msg < assistant_msg_nb_limit) \
+    while len(remaining_messages_history) > 0 and (assistant_msg_nb_limit is None or nb_dnd_assistant_msg < assistant_msg_nb_limit) \
         and (history_msg_nb_limit is None or inserted_messages_count < history_msg_nb_limit):
         if is_first_loop and repeat_last_msg:
-            msg = messages_history[-1] # Repeat the last message
+            msg = cleaned_messages_history[-1] # Repeat the last message
         else:
             msg = remaining_messages_history.pop()
-
-        nb_assistant_msg = nb_assistant_msg + 1 if msg["role"] == "assistant" else nb_assistant_msg
+        
+        if msg["role"] == "assistant" and msg["type"] == "dnd":
+            nb_dnd_assistant_msg += 1
 
         if custom_action is not None and custom_action in roll_actions:
             # Convert the roll text message to specify that it's a roll action
@@ -5063,7 +5126,7 @@ def send_message(new_user_msg_arg: str, username_arg: str = None, start_send_mes
                 else:
                     text = "Message history"
 
-                formatted_content = remove_message_history_prefix(remove_system_prefix(msg["content"])) 
+                formatted_content = remove_messages_history_prefix(remove_system_prefix(msg["content"])) 
 
                 # Remove the first char if it's a [ and the last char if it's a ] (if added by mistake during tests)
                 if formatted_content.startswith("[") and formatted_content.endswith("]"):
@@ -5087,7 +5150,7 @@ def send_message(new_user_msg_arg: str, username_arg: str = None, start_send_mes
             
             msg = format_msg_oai("user", text)
         # Add emotions to the first batch of msg
-        elif nb_assistant_msg == 0 and is_chat_dnd and msg["role"] in ["user", "assistant"]:
+        elif nb_dnd_assistant_msg == 0 and is_chat_dnd and msg["role"] in ["user", "assistant"]:
             # Add emotions to the current msg
             try:
                 msg = add_emotions_to_msg(msg)
@@ -5108,41 +5171,39 @@ def send_message(new_user_msg_arg: str, username_arg: str = None, start_send_mes
             total_length = new_total_length
             inserted_messages_count += 1
 
-        # Add dnd chat msg to the convo, as long as max limit not reached or the last msg was not refused or unrelated
-            # Only insert them for assistant msg (to avoid having the viewer msg in the middle of the convo)
-        if can_add_chat_convo_msg and len(chat_messages_history) >= 2 and msg["role"] == "assistant":
-            ai_answer = copy.deepcopy(chat_messages_history.pop())
-            user_question = copy.deepcopy(chat_messages_history.pop())
-
-            new_total_length = total_length + count_tokens([ai_answer, user_question])
-
-            if "$unrelated$" in ai_answer["content"] or "$refused$" in ai_answer["content"] or new_total_length >= max_token_length or added_chat_convo_msg_nb >= max_added_chat_convo_msg_nb:
-                can_add_chat_convo_msg = False
-            else:
-                messages.insert(start_msg_index, ai_answer)
-                messages.insert(start_msg_index, user_question)
-                added_chat_convo_msg_nb += 1
-
         is_first_loop = False
+        
+    history_cache_group_size = config_dnd.get("history_cache_group_size", 10)
+    has_exceeded_max_token_length = new_total_length >= max_token_length
+    
+    # If the context size limit was reached, remove messages until we reach a message who has the same modulo in the original history (necessary for the cache to work)
+    clamp_messages_to_history(has_exceeded_max_token_length, messages, cleaned_messages_history, start_msg_index, history_cache_group_size)
 
-    # Include memory 6 msg behind the last msg
-    if user_current_story_message is not None and is_game and custom_action is None:
-        memory_insert_idx = len(messages) -6
+    # Include memory X msg behind the last msg
+    if current_memory_dynamic_message is not None and custom_action is None:
+        memory_insert_idx = len(messages) - (12 if is_chat_dnd else 6) # Double for chat dnd, since we also include user messages
+        
         if memory_insert_idx < start_msg_index:
             memory_insert_idx = start_msg_index
+        else:
+            # Only insert the memory before a dnd assistant msg
+            while memory_insert_idx > start_msg_index:
+                if messages[memory_insert_idx]["role"] == "assistant" and messages[memory_insert_idx]["type"] == "dnd":
+                    break
+                memory_insert_idx -= 1
 
-        messages.insert(memory_insert_idx, user_current_story_message)
+        messages.insert(memory_insert_idx, current_memory_dynamic_message)
+        
+        # Add spell list msg
+        if is_chat_dnd and current_story.get("spellcasting_ability"):
+            available_spells_text = get_available_spells_text(current_story)
+            #spell_index = start_msg_index - 1 if start_msg_index > 0 else start_msg_index
+            messages.insert(memory_insert_idx, format_msg_oai("user", available_spells_text))
 
     # Remove the extra msg if there were no roll text in the current roll action messages (only keep 2 last msg in that case)
         # Don't do it if it's the first few messages (will keep only 1 msg)
     if custom_action in roll_actions and not has_roll_text_msg and inserted_messages_count > 2:
         del messages[start_msg_index]
-
-    # Add spell list msg
-    if is_chat_dnd and current_story.get("spellcasting_ability"):
-        available_spells_text = get_available_spells_text(current_story)
-        spell_index = start_msg_index - 1 if start_msg_index > 0 else start_msg_index
-        messages.insert(spell_index, format_msg_oai("user", available_spells_text))
 
     # Add skills for get_roll
     if custom_action in ["get_roll", "get_roll_skill", "get_roll_skill_special_ability", "choose_combatant_action"]:
@@ -5214,7 +5275,7 @@ def send_message(new_user_msg_arg: str, username_arg: str = None, start_send_mes
 
     # Include previous chat convo as a message for the initial ai turn (in case that info is not repeated in the ai dnd message)
     if is_game and (custom_action in initial_ai_turn_actions or is_game_dnd):
-        chat_msg_recall_text = process_previous_chat_msg(current_story, setup_dnd)
+        chat_msg_recall_text = process_previous_chat_msg(setup_dnd, messages_history_arg) # Use the original messages_history (before chat msg were removed)
 
         if chat_msg_recall_text is not None:
             chat_msg_recall = format_msg_oai("user", chat_msg_recall_text)
@@ -5357,21 +5418,21 @@ def send_message(new_user_msg_arg: str, username_arg: str = None, start_send_mes
         elif custom_action == "choose_music":
             set_music(response_content, convo_obj_filepath, current_game)
         elif custom_action == "is_main_quest_completed":
-            validate_is_main_quest_completed(response_content)
+            validate_is_main_quest_completed(response_content, current_story)
         elif custom_action == "is_quest_completed":
-            validate_is_quest_completed(response_content)
+            validate_is_quest_completed(response_content, current_story)
         elif custom_action == "is_quest_given":
-            validate_quest_given(response_content)
+            validate_quest_given(response_content, current_story)
         elif custom_action == "update_inventory":
-            update_inventory(response_content)
+            update_inventory(response_content, current_story)
         elif custom_action == "update_location":
-            update_location(response_content)
+            update_location(response_content, current_story)
         elif custom_action == "update_location_category":
-            update_location_category(response_content, setup_dnd)
+            update_location_category(response_content, setup_dnd, current_story)
         elif custom_action == "update_important_characters":
             update_important_characters(response_content, current_story)
         elif custom_action == "update_rest":
-            update_rest(response_content, setup_dnd)
+            update_rest(response_content)
         elif custom_action == "get_emotions_mc":
             return get_emotions_mc(response_content), convo_obj_filepath, None
         elif custom_action == "get_emotions_opponents":
@@ -5382,11 +5443,6 @@ def send_message(new_user_msg_arg: str, username_arg: str = None, start_send_mes
             return get_roll_from_action(custom_action, response_content, convo_obj_filepath, current_story, setup_dnd, config_dnd)
         # Return whatever was generated by the ai (ex: game over, events, etc.)
         return response_content, convo_obj_filepath, None
-
-    # When chatting with chat during ai dungeon game, add the history to special file instead of adding it to ai dungeon main history.
-    if state_switch == "dnd":
-        history_file = dnd_with_chat_history_file # Important, need to overwrite history_file so that it saves the chat history in the correct file (not the dnd story one)
-        messages_history = get_messages_history(history_file)
 
     # SEND CONVO TO TTS
     new_msg_content = response_content
@@ -5448,17 +5504,14 @@ def send_message(new_user_msg_arg: str, username_arg: str = None, start_send_mes
 
     if current_game == "dnd" and add_music and config.get("add_music", False):
         # Add music async to current convo file once the assistant msg has been sent
-        create_thread_custom_action("choose_music", username, current_game, convo_obj_filepath, messages_history, override_current_story=current_story)
+        create_thread_custom_action("choose_music", username, messages_history, current_story, current_game, convo_obj_filepath)
 
     if current_game == "dnd" and not is_game_won_or_lost_msg: # Just add the message to history when initial game won or lost.
         # AI Answer
         new_msg_content = remove_parentheses(response_content) # Remove speaking to chat from past messages
 
         # Add ai answer to history
-        new_msg = {
-            "role": "assistant", 
-            "content" : new_msg_content 
-        }
+        new_msg = format_msg_oai("assistant", new_msg_content, "dnd", current_turn)
         messages_history.append(new_msg)
 
         # Remove asterisks + parenthesis when sending to ai dungeon (manually for now) (keep prefix for now)
@@ -5466,7 +5519,7 @@ def send_message(new_user_msg_arg: str, username_arg: str = None, start_send_mes
         ai_new_msg = remove_all_asterisks(remove_parentheses(new_msg_content))
         print_log(f"FOR AI DUNGEON: {ai_new_msg}") 
 
-        run_battle_turn(ai_new_msg, username, current_game, convo_obj_filepath, messages_history, current_story, setup_dnd, config, config_dnd, generate_next_convo_arg, has_valid_prev_chat_msg, start_battle_assistant)
+        run_battle_turn(ai_new_msg, username, current_game, convo_obj_filepath, messages_history, current_story, setup_dnd, config, config_dnd, generate_next_convo_arg, has_valid_prev_chat_msg, start_battle_assistant, current_turn)
 
         # If the roll_info is still None (most likely due to an error), set it to it's default value (to not block the tts)
         convo_obj = read_json(convo_obj_filepath)
@@ -5476,7 +5529,8 @@ def send_message(new_user_msg_arg: str, username_arg: str = None, start_send_mes
 
     # Skip all the rolls when initial game won or lost msg
     elif current_game == "dnd" and is_game_won_or_lost_msg:
-        messages_history.append(response_message)
+        
+        messages_history.append(convert_msg_oai_add_type(response_message, "dnd", current_turn))
 
         # Add emotions for the initial game won or lost msg
         create_emotions_thread(username, current_game, convo_obj_filepath, messages_history, current_story, config)
@@ -5484,26 +5538,20 @@ def send_message(new_user_msg_arg: str, username_arg: str = None, start_send_mes
     # Chat mode
     else:
         #Save the user prompt message (without prefix) to history
-            # Order = user_msg => ai_answer
+            # Order = user_msg => ai_answerddddd
         if not auto_mode and new_message is not None:
-            messages_history.append(new_message)
+            messages_history.append(convert_msg_oai_add_type(new_message, "chat", current_turn))
             
-        messages_history.append(response_message)
+        messages_history.append(convert_msg_oai_add_type(response_message, "chat", current_turn))
 
-        # Add music async to current convo file once it's full text has been set.
+        # Add music async to current convo file once it's full text has been set (chat mode only).
         if add_music:
-            create_thread_custom_action("choose_music", username, current_game, convo_obj_filepath, messages_history, override_current_story=current_story)
+            create_thread_custom_action("choose_music", username, messages_history, messages_history, current_story, current_game, convo_obj_filepath) # Add music is only used in chat mode here, so use chat history for both to include the new messages in both
 
     if custom_action is None:
         no_gen += 1
 
-    # Save new history
-    set_messages_history(history_file, messages_history)
-
-    # Save the current story
-    set_current_story(current_story)
-
-    print_log("Main processing done")
+    print_log("Send message done")
 
     return response_message, convo_obj_filepath, None
 
@@ -5533,11 +5581,11 @@ def get_next_message_direct() -> Tuple[Any, Any, Any]:
     return next_msg_text, username, None
 
 # Wait until all threads are processed until continuing
-def create_thread_send_message(username, args):
+def create_thread_send_message(username, messages_history, current_story, args):
     # Create a ThreadPoolExecutor
     with concurrent.futures.ThreadPoolExecutor() as executor:
         # Submit tasks one by one
-        futures = [executor.submit(send_message, '', username, **arg) for arg in args]
+        futures = [executor.submit(send_message, '', username, messages_history, current_story, **arg) for arg in args]
 
         results = [] 
         # Collect results in the order they were submitted (so the order is preserved)
@@ -5554,12 +5602,26 @@ def create_thread_send_message(username, args):
 
         return results  # Return the list of results
 
-def create_thread_custom_action(custom_action, username, current_game, convo_obj_filepath = None, override_messages_history = None, override_current_story = None):
-    args = [{'current_game': current_game, 'custom_action': custom_action, 'filename': convo_obj_filepath, 'override_messages_history': override_messages_history, 'override_current_story': override_current_story}]
-    create_thread_send_message(username, args)
+def create_thread_custom_action(custom_action, username, messages_history_arg, current_story, current_game, convo_obj_filepath = None):
+    args = [{'current_game': current_game, 'custom_action': custom_action, 'filename': convo_obj_filepath}]
+    create_thread_send_message(username, messages_history_arg, current_story, args)
 
-def write_and_send_chat_msg(generate_next_convo=True, state_switch = None, switched_scene=False):
-    start_send_message_timestamp = time.time()
+def create_thread_custom_action_read_history(custom_action, username, current_story, current_game, convo_obj_filepath = None, is_chat_mode = False):
+    message_history = get_messages_history(chat_history_file if is_chat_mode else dnd_history_file)
+    create_thread_custom_action(custom_action, username, message_history, current_story, current_game, convo_obj_filepath)
+
+def count_prev_dnd_chat_msg(messages_history: list):
+    nb_dnd_chat_msg = 0
+    
+    for msg in reversed(messages_history):
+        if msg["type"] == "dnd":
+            break
+        elif msg["type"] == "chat" and msg["role"] == "assistant":
+            nb_dnd_chat_msg += 1
+            
+    return nb_dnd_chat_msg
+
+def write_and_send_chat_msg(messages_history, current_story, generate_next_convo=True, state_switch = None, switched_scene=False):
     get_user_message = True
     has_sent_msg = False
     convo_obj_filepath = None
@@ -5570,7 +5632,7 @@ def write_and_send_chat_msg(generate_next_convo=True, state_switch = None, switc
     config_dnd = read_json(f'{ai_config_path}dnd_config.json')
 
     max_unrelated_or_refused_nb_retry = config_dnd["max_unrelated_or_refused_nb_retry"] if config_dnd is not None else None
-    
+
     while True:
         # Only get new message if it's the first time or the message was flagged (not on retry)
         if get_user_message == True:
@@ -5592,11 +5654,10 @@ def write_and_send_chat_msg(generate_next_convo=True, state_switch = None, switc
         # Add music if not playing ai dungeon, and only every 4 messages (unless we just switched scene)
         add_music = not is_game and ((no_gen-1) % 4 == 0 or switched_scene)
 
-        # try:
-        response, convo_obj_filepath, _  = send_message(next_prompt, username, start_send_message_timestamp=start_send_message_timestamp, custom_prefix=custom_prefix, generate_next_convo_arg=generate_next_convo, state_switch=state_switch, add_music=add_music) #No prefix + no user
+        response, convo_obj_filepath, _  = send_message(next_prompt, username, messages_history, current_story, custom_prefix=custom_prefix, clone_messages_history=False, generate_next_convo_arg=generate_next_convo, state_switch=state_switch, add_music=add_music) #No prefix + no user msg
 
-        current_story = get_current_story() if is_game else None
-        unrelated_or_refused_retries = current_story.get("unrelated_or_refused_retries", 0) if is_game and current_story is not None else 0
+        # Determine how many unrelated or refused dnd chat messages there were.
+        unrelated_or_refused_retries = count_prev_dnd_chat_msg(messages_history) - 1 if is_game else 0 # -1 because we don't count the current msg
 
         if response != -1 and is_game and max_unrelated_or_refused_nb_retry is not None and unrelated_or_refused_retries <= max_unrelated_or_refused_nb_retry:
             # if content contains $unrelated$ or $refused$
@@ -5628,10 +5689,10 @@ def write_and_send_chat_msg(generate_next_convo=True, state_switch = None, switc
 
                 # Continue to loop if the retry limit is not reached, only show the warning and exit otherwise
                 if not retry_limit_reached:
-                    current_story["unrelated_or_refused_retries"] = unrelated_or_refused_retries + 1 # Don't do += 1, in case it's not defined yet
-                    set_current_story(current_story)
-
                     unlock_next_msg() # send message failed, unlock next msg
+                    
+                    # Save any changes to the history when continuing due to an unrelated or refused msg, since those are a self contained back and forth (ok if we continue from there next time)
+                    set_messages_history(dnd_history_file, messages_history)
 
                     continue
 
@@ -5648,11 +5709,20 @@ def write_and_send_chat_msg(generate_next_convo=True, state_switch = None, switc
 
     return has_sent_msg
 
-def create_eval_convo(setup_dnd, config_dnd):
+def write_send_and_save_chat_msg(switched_scene=False):
+    messages_history = get_messages_history(chat_history_file)
+    has_sent_msg = write_and_send_chat_msg(messages_history, None, switched_scene=switched_scene)
+    
+    # Won't save new message to history otherwise
+    if has_sent_msg == True:
+        set_messages_history(chat_history_file, messages_history) # Never need to save the history if no msg was sent in chat mode (only 1 back and forth)
+        
+    return has_sent_msg
+
+def create_eval_convo(current_story, setup_dnd, config_dnd):
     global location_eval, location_category_eval, important_characters_eval, main_quests_completed_eval, quests_completed_eval, quests_added_eval, inventory_eval, update_rest_eval, battle_end_eval
 
     # Store inventoiry eval in story, so it can be added from both normal eval and use item
-    current_story = get_current_story() 
     evals_to_show = []
 
     if update_rest_eval is not None:
@@ -5714,7 +5784,7 @@ def create_eval_convo(setup_dnd, config_dnd):
     if main_quests_completed_eval is not None:
         main_quests_completed = main_quests_completed_eval
         if len(main_quests_completed) > 0:
-            quest_state = "fully" if len(current_story["main_quests"]) == 0 else "partially"
+            quest_state = "fully" if len(current_story["main_quests"]) <= 1 else "partially"
             evals_to_show.append(f"Main quests {quest_state} completed: #green#" + join_quests_semicolon(main_quests_completed) + "#green#")
 
             # Complete main quests in the current story + end the game if all main quests are completed
@@ -5764,8 +5834,8 @@ def create_eval_convo(setup_dnd, config_dnd):
         roll_info_text = ""
         
         if len(evals_to_show) > 0:
-            print_special_text("\n#bold#nInfo:#bold#")
-            print("\n".join(evals_to_show)) # print evals
+            print_special_text("\n#bold#Info:#bold#")
+            print_special_text("\n".join(evals_to_show)) # print evals
             roll_info_text = "#message_separator#".join(evals_to_show)
             
         sections = [create_section_obj(roll_info_text, section_name="eval")]
@@ -5779,11 +5849,7 @@ def create_eval_convo(setup_dnd, config_dnd):
         write_json(convo_obj_filepath, convo_obj) 
 
     # Print the current limited resources
-    # print_limited_resources(current_story)
-
-    # Save any changes to the current story
-        # Don't do it in the func themselves to avoid race conditions
-    set_current_story(current_story)
+    print_limited_resources(current_story)
 
 def save_story_debug_folder(current_story, is_final = False):
     debug_story_folder = f"{root_path}current_story_debug"
@@ -5810,18 +5876,20 @@ def save_story_debug_folder(current_story, is_final = False):
         new_file_path = os.path.join(debug_story_folder, folder_name, file_name)
         shutil.copy2(original_file_path, new_file_path)
 
-def prepare_game_won_or_lost(current_story, is_game_won, is_game_lost):
+def prepare_game_won_or_lost(current_story, is_game_won, is_game_lost, messages_history):
     # In character conclusion
-    send_message("", "system", current_game="dnd", start_send_message_timestamp=time.time(), generate_next_convo_arg=False, force_gpt4 = True, add_music=True) 
+    send_message("", "system", messages_history, current_story, current_game="dnd", generate_next_convo_arg=False, clone_messages_history=False, force_gpt4 = True, add_music=True) 
 
     # ooc conclusion
-    send_message("", "system", start_send_message_timestamp=time.time(), state_switch="dnd") # Generate next msg at this point
+    send_message("", "system", messages_history, current_story, state_switch="dnd", clone_messages_history=False) # Generate next msg at this point
 
     # Update the win lost count
     config_dnd = read_json(f'{ai_config_path}dnd_config.json')
     config_dnd["win_count"] += 1 if is_game_won else 0
     config_dnd["lose_count"] += 1 if is_game_lost else 0
     write_json(f"{ai_config_path}dnd_config.json", config_dnd) 
+    
+    set_messages_history(dnd_history_file, messages_history)
 
     current_story["current_turn"] += 1
     current_story["game_over_time"] = time.time()
@@ -5838,7 +5906,7 @@ def story_first_turn(current_game, username, current_story, config, config_dnd):
 
     # Create the history for the init convo
     messages_history_init = get_messages_history(dnd_history_file)
-    messages_history_init.append(format_msg_oai("user", "system: " + story_init_text))
+    messages_history_init.append(format_msg_oai("user", "system: " + story_init_text, "dnd", 0))
 
     # Create init convo obj
     convo_obj_init = create_convo_obj("", story_init_text, "system", current_game, True, current_story, win_count = config_dnd["win_count"] if config_dnd is not None else 0, \
@@ -5866,7 +5934,7 @@ def story_first_turn(current_game, username, current_story, config, config_dnd):
 
     # Clone init history and add scenario msg
     messages_history_story_both = copy.deepcopy(messages_history_init)
-    messages_history_story_both.append(format_msg_oai("user", "system: " + story_scenario_text))
+    messages_history_story_both.append(format_msg_oai("user", "system: " + story_scenario_text, "dnd", 0))
 
     # Write convo obj scenario
     convo_obj_filepath_scenario, _ = get_new_convo_filename(True, False, current_story, custom_action="scenario")
@@ -5878,7 +5946,7 @@ def story_first_turn(current_game, username, current_story, config, config_dnd):
     
     # Finally, add the scenario to the final history (start from scratch, final history has no init msg)
     messages_history = get_messages_history(dnd_history_file)
-    messages_history.append(format_msg_oai("user", "system: " + story_scenario_text)) # Only place the scenario in the history (that's what's in dnd server)
+    messages_history.append(format_msg_oai("user", "system: " + story_scenario_text, "dnd", 0)) # Only place the scenario in the history (that's what's in dnd server)
     set_messages_history(dnd_history_file, messages_history)
 
     current_story["current_turn"] = 1
@@ -5887,9 +5955,7 @@ def story_first_turn(current_game, username, current_story, config, config_dnd):
     # Choose the starting music (do it for first convo msg so it plays at the start)
         # Will use both history even if on second convo, because that's what was saved on the history file abpve
     if config.get("add_music", False):
-        send_message("", username, current_game=current_game, custom_action="choose_music", filename = convo_obj_filepath_init)
-
-    update_char_sheet_doc(current_story)
+        send_message("", username, messages_history, current_story, current_game, custom_action="choose_music", filename = convo_obj_filepath_init)
 
 def is_time_up_speak_viewers(current_story, config_dnd):
     return (current_story["is_game_won"] or current_story["is_game_lost"]) and current_story.get("game_over_time") is not None and time.time() - current_story.get("game_over_time", 0) >= config_dnd["speak_to_chat_after_gameover_time"]
@@ -5968,15 +6034,17 @@ def write_and_send_message_dnd(custom_action_test = None, allow_continue_without
     is_game_won_or_lost = current_story["is_game_won"] or current_story["is_game_lost"]
     is_game_won_or_lost_speak_viewers = is_game_won_or_lost and current_story.get("game_over_time") is not None
     is_time_up_game_won_or_lost_speak_viewers = is_time_up_speak_viewers(current_story, config_dnd)
-
+    
+    messages_history = get_messages_history(dnd_history_file)
+    
     # Check chat msg if allowed and not turn 0 (nothing to comment on) and haven't actually sent a chat msg since x turns
     if allow_chat_msg_dnd and current_turn >= 1 and ((current_turn - 1) % check_chat_max_every_x_turns == 0 or switched_scene or is_game_won_or_lost):
         generate_next_convo = is_game_won_or_lost_speak_viewers and not is_time_up_game_won_or_lost_speak_viewers # Only generate next convo in chat mode when game won or lost and game over started
-        has_sent_msg = write_and_send_chat_msg(generate_next_convo, "dnd") # Don't generate the next convo file after receiving an answer from bark (wait until dnd to do that)
+        has_sent_msg = write_and_send_chat_msg(messages_history, current_story, generate_next_convo, "dnd") # Don't generate the next convo file after receiving an answer from bark (wait until dnd to do that)
         
         # Received error, exiting
         if has_sent_msg == -1:
-            return -1 # Exit loop
+            return -1 # Exit loop if there was an error
 
         if has_sent_msg == True:
             prev_messages_to_send = "chat" # Send previous chat messages to system
@@ -5986,13 +6054,13 @@ def write_and_send_message_dnd(custom_action_test = None, allow_continue_without
                 return True
         elif has_sent_msg == -2: # Continue without chat msg, even in dnd mode
             pass
-        elif (config_dnd["dnd_input_mode"] and not allow_continue_without_user_msg):
-            return False # Don't send anything to dnd if no chat msg and input mode is enabled
+        elif not allow_continue_without_user_msg:
+            return False # Don't send anything to dnd if no chat msg
         
     if is_game_won_or_lost and custom_action_test is None:
         # Prepare the game won or lost in it's own convo msg
         if current_story.get("game_over_time") is None:
-            prepare_game_won_or_lost(current_story, current_story["is_game_won"], current_story["is_game_lost"])
+            prepare_game_won_or_lost(current_story, current_story["is_game_won"], current_story["is_game_lost"], messages_history)
             return True
         # If game won or lost and enough time has elapsed, create a new story
         elif is_time_up_game_won_or_lost_speak_viewers:
@@ -6008,14 +6076,13 @@ def write_and_send_message_dnd(custom_action_test = None, allow_continue_without
 
     # Add previous chat msg to system if has_sent_msg=True
     if custom_action_test is None:
-        response_content, convo_obj_filepath, _ = send_message("", username, start_send_message_timestamp=time.time(), current_game=current_game, state_switch=prev_messages_to_send, add_music=add_music, extra_info=specific_extra_info)
+        response_content, convo_obj_filepath, _ = send_message("", username, messages_history, current_story, current_game=current_game, state_switch=prev_messages_to_send, add_music=add_music, extra_info=specific_extra_info, clone_messages_history=False)
         # If moderation flag or no response
         if response_content == -1 or response_content is None: 
             return -1
     else:
         response_content = convo_obj_filepath = None
 
-    current_story = get_current_story() 
     is_game_won_or_lost = current_story["is_game_lost"] or current_story["is_game_won"] #  Change music if game over
 
     if (run_eval and not is_game_won_or_lost) and (custom_action_test is None or custom_action_test == "run_eval_convo"):
@@ -6037,9 +6104,11 @@ def write_and_send_message_dnd(custom_action_test = None, allow_continue_without
         for custom_action in custom_actions:
             extra_info = get_custom_action_extra_info(custom_action, battle_info)
 
-            args.append({'current_game': current_game, 'custom_action': custom_action, 'filename': convo_obj_filepath, 'override_current_story': current_story, 'extra_info': extra_info})
+            args.append({'current_game': current_game, 'custom_action': custom_action, 'filename': convo_obj_filepath, 'extra_info': extra_info})
 
-        create_thread_send_message(username, args)
+        start_loading_animation()
+
+        create_thread_send_message(username, messages_history, current_story, args)
 
         step_2_custom_actions = []
 
@@ -6051,9 +6120,11 @@ def write_and_send_message_dnd(custom_action_test = None, allow_continue_without
 
         # Do a second pass with the custom actions that need to be done after the first pass
         if (len(step_2_custom_actions) > 0): # and custom_action_test is None:            
-            create_thread_send_message(username, args = [{'current_game': current_game, 'custom_action': custom_action, 'filename': convo_obj_filepath} for custom_action in step_2_custom_actions])
+            create_thread_send_message(username, messages_history, current_story, args = [{'current_game': current_game, 'custom_action': custom_action, 'filename': convo_obj_filepath} for custom_action in step_2_custom_actions])
+            
+        stop_loading_animation()
 
-        create_eval_convo(setup_dnd, config_dnd)
+        create_eval_convo(current_story, setup_dnd, config_dnd)
         
     # Run tests
     elif custom_action_test is not None and not custom_action_test.startswith("run_"):
@@ -6062,19 +6133,19 @@ def write_and_send_message_dnd(custom_action_test = None, allow_continue_without
         battle_info = current_story.get("battle_info")
         extra_info = get_custom_action_extra_info(custom_action, battle_info, specific_extra_info)
 
-        _, _, roll_results = send_message("", username, current_game=current_game, custom_action=custom_action, override_current_story=current_story, extra_info=extra_info)
+        _, _, roll_results = send_message("", username, messages_history, current_story, current_game=current_game, custom_action=custom_action, extra_info=extra_info)
 
         if process_tests and roll_results is not None:
             process_test_rolls(custom_action, roll_results, current_story, setup_dnd)
         
     elif custom_action_test is not None and custom_action_test.startswith("run_"):
-        current_message_history = get_messages_history(dnd_history_file)
+        current_messages_history = get_messages_history(dnd_history_file)
         current_battle_info = current_story.get("battle_info")
         combatant_sheets = get_combatant_sheets()
 
         # Update the battle info (will assume that the ai or server detected a start battle if battle info doesnt exist)
         if custom_action_test == "run_update_battle_info":
-            update_battle_info(current_story, username, current_game, current_message_history, True)
+            update_battle_info(current_story, username, current_game, current_messages_history, True)
         
         elif custom_action_test == "run_eval_convo":
             create_eval_convo(setup_dnd, config_dnd)
@@ -6082,7 +6153,7 @@ def write_and_send_message_dnd(custom_action_test = None, allow_continue_without
         # Run all the opponent sheets for all the opponent groups in battle info
         elif custom_action_test == "run_create_combatant_sheets":
             if current_battle_info is not None:
-                create_combatant_sheets(username, current_game, current_message_history, current_story, current_battle_info["opponents"])
+                create_combatant_sheets(username, current_game, current_messages_history, current_story, current_battle_info["opponents"])
             else:
                 print("ERROR: No battle info found")
 
@@ -6102,7 +6173,7 @@ def write_and_send_message_dnd(custom_action_test = None, allow_continue_without
         elif custom_action_test in ["run_choose_opponents_actions", "run_choose_allies_actions"]:
             if current_battle_info is not None:
                 is_opponent = custom_action_test == "run_choose_opponents_actions"
-                combatant_containers = choose_combatants_actions(username, current_game, current_story, setup_dnd, combatant_sheets, current_battle_info, current_message_history, is_opponent)
+                combatant_containers = choose_combatants_actions(username, current_game, current_story, current_battle_info, current_messages_history, is_opponent)
                 process_combatant_turn(current_story, setup_dnd, combatant_sheets, combatant_containers, is_opponent)
             else:
                 print("ERROR: No battle info found")
@@ -6116,15 +6187,15 @@ def write_and_send_message_dnd(custom_action_test = None, allow_continue_without
             last_ai_msg_obj = None
             
             # Get the last AI msg, removing it and everything after it from the history
-            while len(current_message_history) > 0:
-                last_ai_msg_obj = current_message_history.pop()
+            while len(current_messages_history) > 0:
+                last_ai_msg_obj = current_messages_history.pop()
                 if last_ai_msg_obj["role"] == "assistant":
                     last_ai_msg_content = last_ai_msg_obj["content"]
                     break
 
             # Add back the last ai msg to the history
             if last_ai_msg_obj is not None:
-                current_message_history.append(last_ai_msg_obj)
+                current_messages_history.append(last_ai_msg_obj)
             
             if convo_obj_filepath is None:
                 convo_obj_filepath, _ = get_new_convo_filename(True, False, current_story)
@@ -6134,19 +6205,20 @@ def write_and_send_message_dnd(custom_action_test = None, allow_continue_without
                 write_json(convo_obj_filepath, convo_obj)
 
             if last_ai_msg_content is not None:
-                run_battle_turn(last_ai_msg_content, username, current_game, convo_obj_filepath, current_message_history, current_story, setup_dnd, config, config_dnd, True, False, start_battle_assistant) # "content" is the default emotion for the narrator
+                run_battle_turn(last_ai_msg_content, username, current_game, convo_obj_filepath, current_messages_history, current_story, setup_dnd, config, config_dnd, True, False, start_battle_assistant, current_turn) # "content" is the default emotion for the narrator
             else:
                 print_log("No assistant msg found in the history")
 
     if custom_action_test is not None: # Leave if test
         return True
+    
+    # Save the messages history
+    set_messages_history(dnd_history_file, messages_history)
 
     current_turn += 1
 
     #Update current turn
-    current_story = get_current_story() # Refresh current story in case it was changed elsewhere
     current_story["current_turn"] = current_turn 
-    current_story["unrelated_or_refused_retries"] = 0 # Reset the retries once the turn ends
 
     set_current_story(current_story)
     print_log(f"Current turn = {current_turn}")
@@ -6163,7 +6235,7 @@ def write_and_send_message_dnd(custom_action_test = None, allow_continue_without
 @app.command()
 def convo():
     extra_info = None
-    custom_action_test = None #"get_roll_attack" 
+    custom_action_test = None #"get_roll" 
     process_tests = True
 
     is_dnd_server_text = False # Whether to manually test dnd server
@@ -6181,7 +6253,11 @@ def convo():
         if current_story is None:
             create_story()
             current_story = get_current_story()
-  
+            
+        # Create char sheet if absent
+        if not os.path.exists(character_sheet_html_file):
+            update_char_sheet_doc(current_story)
+            
         # Initialize the story on the first turn
         if current_story["current_turn"] == 0:
             config_dnd = read_json(f'{ai_config_path}dnd_config.json')
@@ -6197,15 +6273,11 @@ def convo():
             if previous_msg_text:
                 print_special_text("\n#bold#Narrator:#bold#")
                 print(previous_msg_text)
-                
-            # Create char sheet if absent
-            if not os.path.exists(character_sheet_html_file):
-                update_char_sheet_doc(current_story)
 
     first_turn_instance = True
 
     print("\nEnter a message")
-
+    
     while(True):
         print("") #Newline before the input
         current_input = input(Fore.YELLOW + '?: ' + Style.RESET_ALL)
@@ -6236,16 +6308,16 @@ def convo():
             continue
         
         # Chat mode
-        if current_game != "dnd":
-            if (current_user == "system" and current_game != "dnd"): # Not considered as from system in dnd setting
-                send_message(current_input, start_send_message_timestamp=time.time(), current_game=current_game, moderate_user_msg=True) #No prefix + no user
-            else:
-                send_message(current_input, username, start_send_message_timestamp=time.time(), current_game=current_game, moderate_user_msg=True)
+        if current_mode != "dnd":
+            set_next_message_direct(current_input)
+            write_send_and_save_chat_msg()
         # Manually test the dnd server
         elif is_dnd_server_text:
             current_story = get_current_story()
             text = roll_text = ""
-            send_text_command_dnd([text], get_dnd_memory_and_author_note_additions(current_story, (roll_text, [[],"", []], ""), is_narrator_response=False)) # Send new command to dnd server
+            messages_history = get_messages_history(dnd_history_file)
+            
+            send_text_command_dnd([text], get_dnd_memory_and_author_note_additions(current_story, (roll_text, [[],"", []], ""), is_narrator_response=False), messages_history) # Send new command to dnd server
         # Manually test a custom action
         elif custom_action_test is not None: 
             write_and_send_message_dnd(custom_action_test, allow_continue_without_user_msg=True, switched_scene=first_turn_instance, specific_extra_info=extra_info, process_tests = process_tests)

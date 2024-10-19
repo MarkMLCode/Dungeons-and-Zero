@@ -20,6 +20,8 @@ from typing import Dict, Tuple, Any, Optional
 import numpy as np
 import logging
 from colorama import Fore, Style
+import itertools
+import sys
 
 from utils.alarm import ring_alarm
 
@@ -32,6 +34,42 @@ show_text_next_msg_file_path = f"{react_path}react_projects/showtext-next-msg-re
 
 skip_log_print = False
 skip_warnings = False
+
+loading_thread = None
+done_loading = False
+
+def show_loading_icon():
+    """
+    Display an animated loading icon in the console.
+    """
+
+    for i in itertools.cycle(['|', '/', '-', '\\']):
+        if done_loading:
+            break
+        sys.stdout.write('\r' + i + ' Loading...')
+        sys.stdout.flush()
+        time.sleep(0.1)
+
+def start_loading_animation():
+    """
+    Start the loading animation in a separate thread.
+    """
+    global loading_thread
+    loading_thread = threading.Thread(target=show_loading_icon)
+    loading_thread.daemon = True
+    loading_thread.start()
+
+def stop_loading_animation():
+    """
+    Stop the loading animation and clear the line.
+    """
+    global loading_thread, done_loading
+    if loading_thread and loading_thread.is_alive():
+        done_loading = True
+        loading_thread.do_run = False
+        loading_thread.join()
+    sys.stdout.write('\r' + ' ' * 20 + '\r')  # Clear the loading text
+    sys.stdout.flush()
 
 def update_print_log_settings(config_dict):
     global skip_log_print, skip_warnings
@@ -1014,7 +1052,10 @@ def oai_call_stream(model, messages, max_response_length, timeout, temperature, 
         "model": model,
         "messages": messages,
         "max_tokens": max_response_length, #Max nb of tokens in th response
-        "stream": True 
+        "stream": True,
+        "stream_options": {
+            "include_usage": True
+        }
     }
 
     if json_mode:
@@ -1056,6 +1097,8 @@ def oai_call_stream(model, messages, max_response_length, timeout, temperature, 
         "prompt_tokens": 0,
         "completion_tokens": 0,
         "total_tokens": 0,
+        "cached_tokens": 0,
+        "reasoning_tokens": 0,
         "response_message": "",
         "messages": messages,
         "chunks": []
@@ -1115,6 +1158,27 @@ def oai_call_stream(model, messages, max_response_length, timeout, temperature, 
 
             # Extract the message
             collected_chunks.append(chunk)  # save the event response
+            choices = chunk['choices']
+            usage = chunk.get("usage")
+            
+            # If the chunk is the usage chunk, extract the usage and continue
+            if usage is not None:
+                oai_call_log["prompt_tokens"] = usage["prompt_tokens"]
+                oai_call_log["completion_tokens"] = usage["completion_tokens"]
+                oai_call_log["total_tokens"] = usage["total_tokens"]
+                
+                prompt_token_details = usage.get("prompt_tokens_details")
+                if prompt_token_details is not None:
+                    oai_call_log["cached_tokens"] = prompt_token_details.get("cached_tokens")
+                    
+                completion_token_details = usage.get("completion_tokens_details")
+                if completion_token_details is not None:
+                    oai_call_log["reasoning_tokens"] = completion_token_details.get("reasoning_tokens")
+                
+                continue
+            elif len(choices) == 0:
+                raise Exception("No choices received from OAI")
+
             chunk_message = chunk['choices'][0]['delta']  # extract the message
             collected_messages.append(chunk_message.get("content", ""))  # save the message
             #print_log(f"Message received {total_time:.2f} sec after request, {chunk_time:.4f} sec after last chunk: {chunk_message}")  # 
@@ -1158,10 +1222,6 @@ def oai_call_stream(model, messages, max_response_length, timeout, temperature, 
     oai_call_log["total_time_taken"] = round(total_time, 4)
     oai_call_log["response_message"] = response_msg
 
-    oai_call_log["prompt_tokens"] = count_tokens(messages)
-    oai_call_log["completion_tokens"] = count_tokens([response_msg_oai]) 
-    oai_call_log["total_tokens"] = oai_call_log["prompt_tokens"] + oai_call_log["completion_tokens"]
-
     print_log(f"Response received from OAI in {time.time() - start_time}s, model used: {model}")
 
     return oai_call_log, response_msg_oai
@@ -1169,9 +1229,9 @@ def oai_call_stream(model, messages, max_response_length, timeout, temperature, 
 
 # Send msg to openai
 def send_open_ai_gpt_message(max_response_length, messages_arg, model, backup_model, timeout = 8, no_gen = None, temperature = None, top_p = None, presence_penalty = None, frequency_penalty = None, from_dnd_server=False, custom_action = "", json_mode = False, is_chat_dnd = False, current_turn = None):
-    # # Remove all messages with unsupported roles
-    messages = [msg for msg in messages_arg if msg["role"] in ["system", "user", "assistant"] or print_log(f"WARNING: Removed message with invalid role", True)]
-
+    # # Remove all messages with unsupported roles, and remove all keys that aren't role or content
+    messages = [{key: value for key, value in msg.items() if key in ["role", "content"]} for msg in messages_arg if msg["role"] in ["system", "user", "assistant"] or print_log(f"WARNING: Removed message with invalid role", True)]
+    
     # Json mode require to have json present somewhere in the prompt, definitely a bug
     if json_mode and len(messages) > 0 and "json" not in messages[-1]["content"].lower():
         raise Exception("ERROR : Json mode require to have json present somewhere in the prompt. Prompt: " + messages[-1]["content"])
@@ -1252,8 +1312,32 @@ def send_open_ai_gpt_message(max_response_length, messages_arg, model, backup_mo
 
     return response_message
 
-def format_msg_oai(msg_type, content):
-    return {"role": msg_type, "content": content}
+def convert_msg_oai_add_type(msg_oai, type, turn):
+    message = {
+        "turn": turn,
+        "type": type,
+        "role": msg_oai["role"],
+        "content": msg_oai["content"]
+    }
+    if turn is None:
+        del message["turn"]
+    
+    return message
+
+def format_msg_oai(msg_role, content, msg_type = None, turn = None):
+    message = {
+        "turn": turn,
+        "type": msg_type,
+        "role": msg_role,
+        "content": content
+    }
+    
+    if turn is None:
+        del message["turn"] 
+    if msg_type is None:
+        del message["type"]
+    
+    return message
 
 encoding_gpt = None
 
@@ -1265,7 +1349,8 @@ def count_tokens(messages):
     num_tokens = 0
     for message in messages:
         for key, value in message.items():
-            num_tokens+=len(encoding_gpt.encode(value))
+            if key in ["role", "content"]: # Only count role and content
+                num_tokens+=len(encoding_gpt.encode(value))
         num_tokens += 4 
 
     num_tokens += 3
@@ -1925,3 +2010,15 @@ def create_folders(folders):
     for folder in folders:
         if not os.path.exists(folder):
             os.makedirs(folder)
+            
+def clamp_messages_to_history(has_exceeded_max_token_length, messages, messages_history, start_msg_index, history_cache_group_size):
+    # If the context size limit was reached, remove messages until we reach a message who has the same modulo in the original history
+        # Ex : If group size is 10, and history ends with 6, then remove messages until the length of messages ends with 6 too.
+        # Reason : To allow the history to be cached every history_cache_group_size (otherwise, will always be different)
+    if has_exceeded_max_token_length and len(messages) > history_cache_group_size:
+        # Remove any msg with a role not in user or assistant from the history (otherwise, there will be a mismatch with the messages)
+        cleaned_history = [msg for msg in messages_history if msg["role"] in ["user", "assistant"]]
+        history_mod = len(cleaned_history) % history_cache_group_size
+    
+        while len(messages) > 0 and (len(messages) % history_cache_group_size != history_mod):
+            del messages[start_msg_index]
