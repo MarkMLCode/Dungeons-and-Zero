@@ -264,7 +264,10 @@ def get_random_choice_text(choices):
 
 def archive_current_story():
     current_story = get_current_story()
-    char_name = current_story["char_name"] if current_story is not None else "unknown" # Archive all relevant files even if current story is none, in case I did it manually but didn't copy all files.
+    if current_story is None:
+        return
+    
+    char_name = current_story["char_name"]
 
     new_folder_name = datetime.now().strftime('%Y%m%d%H%M%S') + "_" + char_name
 
@@ -1164,7 +1167,7 @@ def create_story(char_name = None, scenario_id = None, use_generic_scenario = No
     current_story_obj["inventory"] = get_inventory_objs(inventory) if inventory is not None else []
 
     archive_current_story() # Archive the current story before creating a new one, in case we want to go back to it later
-
+    
     set_current_story(current_story_obj)
 
     print_log(f"NEW STORY: {char_description} {scenario}")
