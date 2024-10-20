@@ -299,9 +299,31 @@ def get_char_by_name(char_name, characters_arr):
 
     return char_obj
 
+def get_char_classes_from_archetypes(archetypes):
+    arcane_spellcasters = ["wizard", "sorcerer"]
+    divine_spellcasters = ["cleric", "druid"]
+    
+    valid_classes = []
+    if any("arcane spellcaster" in archetype for archetype in archetypes):
+        valid_classes += arcane_spellcasters
+    elif any("divine spellcaster" in archetype for archetype in archetypes):
+        valid_classes += divine_spellcasters
+    elif any("spellcaster" in archetype for archetype in archetypes):
+        valid_classes += arcane_spellcasters + divine_spellcasters
+        
+    if any("ranged" in archetype for archetype in archetypes):
+        valid_classes += ["ranger"]
+    if any("melee" in archetype for archetype in archetypes):   
+        valid_classes += ["fighter", "barbarian", "paladin", "monk"]
+    
+    return valid_classes
+
+def get_char_with_class(characters_arr, character_classes):
+    return [char for char in characters_arr if get_char_classes(char)[0].lower() in character_classes]
+
 # Get a random character and scenarios, but only from the pool that weren't chosen yet. 
     # Once all chosen, loop back and go through all scenarios randomly again, repeat.
-def get_char_and_scenario(stories_history, dnd_characters, specific_char_name = None, specific_scenario_id = None, use_generic_scenario = False):
+def get_char_and_scenario(stories_history, dnd_characters, specific_char_name = None, specific_scenario_id = None, use_generic_scenario = False, character_classes = []):
     chosen_characters_counts = defaultdict(int)
     chosen_scenarios_counts = defaultdict(lambda: defaultdict(int))
 
@@ -312,6 +334,21 @@ def get_char_and_scenario(stories_history, dnd_characters, specific_char_name = 
             chosen_scenarios_counts[story['character']][story['scenario']] += 1
 
     characters_arr = [char for char in dnd_characters["characters_with_scenarios"] if not char.get('locked', False) and not (char.get("is_non_combatant", False) and use_generic_scenario)] # Ignore locked characters or non-combatants if using generic scenario
+    
+    # Can specify character classes to choose from in after game chat
+    if len(character_classes) > 0:
+        character_classes = [class_name.lower() for class_name in character_classes]
+        characters_arr_with_class = get_char_with_class(characters_arr, character_classes)
+        
+        # See if a char archetype was specified instead of a class
+        if len(characters_arr_with_class) == 0:
+            char_classes_from_archetypes = get_char_classes_from_archetypes(character_classes)
+            characters_arr_with_class = get_char_with_class(characters_arr, char_classes_from_archetypes)
+        
+        if len(characters_arr_with_class) == 0:
+            print(f"ERROR: No characters found with class {character_classes}, selecting from all characters instead")
+        else:
+            characters_arr = characters_arr_with_class
 
     char_name = None
     char_obj = None
@@ -902,7 +939,7 @@ def get_inventory_objs(inventory):
 
     return inventory_objs
 
-def create_story(char_name = None, scenario_id = None, use_generic_scenario = None):
+def create_story(char_name = None, scenario_id = None, use_generic_scenario = None, character_classes = []):
     dnd_config = read_json(f'{ai_config_path}dnd_config.json')
 
     if dnd_config.get("character_name") is not None:
@@ -931,7 +968,7 @@ def create_story(char_name = None, scenario_id = None, use_generic_scenario = No
     if use_generic_scenario is None:
         use_generic_scenario = rd.randint(1, 4) == 1
 
-    char_obj, scenario_id = get_char_and_scenario(stories_history, dnd_characters, char_name, scenario_id, use_generic_scenario)
+    char_obj, scenario_id = get_char_and_scenario(stories_history, dnd_characters, char_name, scenario_id, use_generic_scenario, character_classes)
 
     char_name = char_obj["name"]
     char_summary = char_obj["summary"]
@@ -4316,12 +4353,18 @@ def send_message(new_user_msg_arg: str, username_arg: str, messages_history_arg:
     #new_user_msg = preprocess_message(prompt_arg)
     new_user_msg = new_user_msg_arg if new_user_msg_arg is not None else ""
 
+    is_game_won = current_story["is_game_won"]
+    is_game_lost = current_story["is_game_lost"]
+    
+    is_game_won_or_lost = is_game_won or is_game_lost
+    is_before_game_won_or_lost = (is_game_won or is_game_lost) and current_story.get("game_over_time") is None
+
     # Actual game over msg (won or lost) in 2 parts
         # Will be true for both the in char dnd part and post mortem analysis chat msg parts
-    is_game_won_or_lost_msg = current_story is not None and (current_story["is_game_won"] or current_story["is_game_lost"]) and new_user_msg == "" and custom_action is None
+    is_game_won_or_lost_msg = current_story is not None and is_game_won_or_lost and new_user_msg == "" and custom_action is None
 
-    is_user_convo_chat_dnd = is_chat_dnd and not is_game_won_or_lost_msg
-    is_normal_game_turn_dnd = is_game_dnd and not is_game_won_or_lost_msg
+    is_user_convo_chat_dnd = is_chat_dnd and not is_game_won_or_lost_msg # Not the initial game over msg
+    is_normal_game_turn_dnd = is_game_dnd and not is_game_won_or_lost_msg # Not the initial game over msg
     is_json_mode = is_user_convo_chat_dnd or is_normal_game_turn_dnd or custom_action is not None #(custom_action is not None and custom_action not in ["choose_music"])
 
     convo_obj_filepath, _ = get_new_convo_filename(is_game, is_chat_dnd, current_story, filename, custom_action)
@@ -4451,13 +4494,6 @@ def send_message(new_user_msg_arg: str, username_arg: str, messages_history_arg:
             current_memory_dynamic_message = create_current_memory_story_message_dynamic(setup_dnd, config_dnd, current_story, chat_with_viewer=True)
             uplifting_note = setup_dnd["game_end_uplifting_note"]
 
-            is_game_won = current_story["is_game_won"]
-            is_game_lost = current_story["is_game_lost"]
-            is_game_won_or_lost = is_game_won or is_game_lost
-
-            is_before_game_won = is_game_won and current_story.get("game_over_time") is None
-            is_before_game_lost = is_game_lost and current_story.get("game_over_time") is None
-            is_before_game_won_or_lost = is_before_game_won or is_before_game_lost
             is_time_up_game_won_or_lost_speak_viewers = is_time_up_speak_viewers(current_story, config_dnd)
 
             # Post mortem analysis of game over msg
@@ -4469,7 +4505,7 @@ def send_message(new_user_msg_arg: str, username_arg: str, messages_history_arg:
                 # INTRO
                 # After game discussion intro
                 if is_before_game_won_or_lost:
-                    game_status_text = setup_dnd["game_status_won"] if is_before_game_won else setup_dnd["game_status_lost"]
+                    game_status_text = setup_dnd["game_status_won"] if is_game_won else setup_dnd["game_status_lost"]
                     state_switch_prompt = setup_dnd["state_switch_from_dnd_prompt_intro"] + " " + game_status_text
                 # Same intro for game about to end or ongoing game (just a diff status)
                 elif is_game_won_or_lost:
@@ -4488,9 +4524,7 @@ def send_message(new_user_msg_arg: str, username_arg: str, messages_history_arg:
                     related_to_game_text = setup_dnd["related_to_game_won_or_lost"].replace("#won_or_lost#", "won" if is_game_won else "lost")
                 elif is_game_won_or_lost:
                     related_to_game_text = setup_dnd["related_to_after_game"] 
-                    
-                    if is_time_up_game_won_or_lost_speak_viewers:
-                        related_to_game_text = related_to_game_text + " " + setup_dnd["next_game_start_soon"]                    
+                    related_to_game_text += " " + (setup_dnd["next_game_start_soon"] if is_time_up_game_won_or_lost_speak_viewers else setup_dnd["decide_if_continue_chat"])              
                 else:
                     related_to_game_text = setup_dnd["related_to_game_ongoing"]
 
@@ -4507,7 +4541,19 @@ def send_message(new_user_msg_arg: str, username_arg: str, messages_history_arg:
 
                 # Add the part 2 to the prompt
                 state_switch_prompt = f"{state_switch_prompt} {related_to_game_text} {setup_dnd['state_switch_from_dnd_prompt_part_2']}{move_on_if_unrelated_text}{add_name_instruction} {state_switch_prompt_json}"
-
+                
+                # Specific json for the prompt (no msg for initial game won or lost messages)
+                if is_before_game_won_or_lost or is_game_won_or_lost_msg:
+                    specific_json = ""
+                # Decide whether to move on to the next game or not
+                elif is_game_won_or_lost:
+                    specific_json = setup_dnd["game_ended_json"]
+                # Unrelated or refused
+                else:
+                    specific_json = setup_dnd["unrelated_or_refused_json"]
+                    
+                state_switch_prompt = state_switch_prompt.replace("#specific_json#", specific_json)
+                    
                 # Viewer when in zero mode, user otherwise
                 the_user_or_viewers = "your viewers" if has_setup_zero else "the user"
                 user_or_viewer = "viewer" if has_setup_zero else "user"
@@ -4536,7 +4582,7 @@ def send_message(new_user_msg_arg: str, username_arg: str, messages_history_arg:
             if current_story["is_game_lost"]: # Initial game lost msg when in character
                 # Char dropped to 0 hp when game_over_quest is empty
                 if game_over_quest != "" and game_over_quest is not None:
-                    prompt = setup_dnd["dnd_game_lost_main_quest_prompt_1"].replace("main_quest", game_over_quest)
+                    prompt = setup_dnd["dnd_game_lost_main_quest_prompt_1"].replace("#main_quest#", game_over_quest)
                 else:
                     prompt = setup_dnd["dnd_game_lost_killed_prompt_1"]
 
@@ -4545,7 +4591,7 @@ def send_message(new_user_msg_arg: str, username_arg: str, messages_history_arg:
                 if game_over_quest is None or game_over_quest == "":
                     game_over_quest = combine_array_as_sentence(current_story["main_quests_archive"])
 
-                prompt = setup_dnd["dnd_game_won_prompt_1"].replace("main_quest", game_over_quest)
+                prompt = setup_dnd["dnd_game_won_prompt_1"].replace("#main_quest#", game_over_quest)
 
             prompt = prompt.replace("#game_end_prefix#", game_end_prefix)
             
@@ -5335,31 +5381,41 @@ def send_message(new_user_msg_arg: str, username_arg: str, messages_history_arg:
     start_battle_assistant = False
 
     # Transform back to normal format when using json_mode in dnd chat (no jsonmode in any game won or over mode, so can't just use 'is_chat_dnd')
-    if is_user_convo_chat_dnd:
+    if is_chat_dnd and not is_game_won_or_lost_msg:
         chat_obj = extract_json_from_response("chat_dnd_msg", response_message['content'])
 
         if chat_obj is None:
             print_log(f"WARNING: chat_dnd_msg object not found in response. Response: {response_message['content']}", True)
             return -1, convo_obj_filepath, None
 
-        # Shouldn't happen (is_user_convo_chat_dnd = false when game is over), but just in case
-        is_game_won_or_lost = current_story.get("is_game_won", False) or current_story.get("is_game_lost", False)
-
         user_or_viewer = "viewer" if has_setup_zero else "user"
 
         user_emotion = chat_obj[f"emotion_{user_or_viewer}_message"].strip(" ,.!?*#") # Remove unecessary characters from emotion (added * around the emotion once, so need to remove it)
         answer = chat_obj[f"answer_to_{user_or_viewer}"]
 
+        # In the after game won or lost section, decide whether to keep talking or not
+        if is_game_won_or_lost and not is_before_game_won_or_lost:
+            is_suggested_proceeding_to_next_game = validate_bool(chat_obj["suggested_proceeding_to_next_game"])
+        
+            # Force the next game to start immediately
+            if is_suggested_proceeding_to_next_game:
+                current_story["force_next_game_start"] = True
+                
+            next_character_classes = chat_obj.get("next_character_classes", [])
+            if isinstance(next_character_classes, list) and len(next_character_classes) > 0:
+                current_story["next_character_classes"] = next_character_classes
+                
         # Determine if answer is unrelated or suggestion refused
-            # Only when game is not already over, otherwise it's not relevant
-        is_unrelated = chat_obj["is_unrelated_to_game_or_character"] and not is_game_won_or_lost
-        suggestion_refused = chat_obj["suggestion_is_rejected"] and not is_game_won_or_lost
+                # Only when game is not already over, otherwise it's not relevant
+        elif not is_before_game_won_or_lost:
+            is_unrelated = chat_obj["is_unrelated_to_game_or_character"]# and not is_game_won_or_lost
+            suggestion_refused = chat_obj["suggestion_is_rejected"]# and not is_game_won_or_lost
 
-        if is_unrelated:
-            print_log("WARNING: Chat's answer is unrelated to game or character.", True)
+            if is_unrelated:
+                print_log("WARNING: Chat's answer is unrelated to game or character.", True)
 
-        if suggestion_refused:
-            print_log("WARNING: Chat's sugestion was refused.", True)
+            if suggestion_refused:
+                print_log("WARNING: Chat's sugestion was refused.", True)
 
         if user_emotion is not None:
             user_emotion_prefix = f"#{user_emotion}#\n"
@@ -5368,6 +5424,8 @@ def send_message(new_user_msg_arg: str, username_arg: str, messages_history_arg:
             print_log("WARNING: User emotion not found in chat_dnd_msg", True)
 
         response_message['content'] = user_emotion_prefix + answer + (" $unrelated$" if is_unrelated else "") + (" $refused$" if suggestion_refused else "")
+        
+    # No json mode in normal dnd turn
     elif is_normal_game_turn_dnd:
         game_obj = extract_json_from_response("game_dnd_msg", response_message['content'])
 
@@ -6039,12 +6097,23 @@ def write_and_send_message_dnd(custom_action_test = None, allow_continue_without
     
     # Check chat msg if allowed and not turn 0 (nothing to comment on) and haven't actually sent a chat msg since x turns
     if allow_chat_msg_dnd and current_turn >= 1 and ((current_turn - 1) % check_chat_max_every_x_turns == 0 or switched_scene or is_game_won_or_lost):
-        generate_next_convo = is_game_won_or_lost_speak_viewers and not is_time_up_game_won_or_lost_speak_viewers # Only generate next convo in chat mode when game won or lost and game over started
+        generate_next_convo = is_game_won_or_lost_speak_viewers and not is_time_up_speak_viewers(current_story, config_dnd) # Only generate next convo in chat mode when game won or lost and game over started
         has_sent_msg = write_and_send_chat_msg(messages_history, current_story, generate_next_convo, "dnd") # Don't generate the next convo file after receiving an answer from bark (wait until dnd to do that)
+        
+        # Set generate_next_convo = False if we force the next game start
+        if is_game_won_or_lost_speak_viewers and generate_next_convo and current_story.get("force_next_game_start", False):
+            generate_next_convo = False
+            is_time_up_game_won_or_lost_speak_viewers = True
         
         # Received error, exiting
         if has_sent_msg == -1:
             return -1 # Exit loop if there was an error
+        
+        # Save the messages history and current story when game won or lost (since we won't do a dnd turn after that)
+            # Current story can still be changed after game over (ex : choosing next character class)
+        if is_game_won_or_lost:
+            set_messages_history(dnd_history_file, messages_history)
+            set_current_story(current_story)
 
         if has_sent_msg == True:
             prev_messages_to_send = "chat" # Send previous chat messages to system
@@ -6064,7 +6133,10 @@ def write_and_send_message_dnd(custom_action_test = None, allow_continue_without
             return True
         # If game won or lost and enough time has elapsed, create a new story
         elif is_time_up_game_won_or_lost_speak_viewers:
-            create_story()
+            time.sleep(1.5) # Wait a second before starting the new game, to make sure the user has the time to read the previous chat msg
+            
+            character_classes = current_story.get("next_character_classes", [])
+            create_story(character_classes=character_classes)
             current_story = get_current_story()
 
             story_first_turn(current_game, username, current_story, config, config_dnd)
@@ -6277,7 +6349,7 @@ def convo():
     first_turn_instance = True
 
     print("\nEnter a message")
-    
+      
     while(True):
         print("") #Newline before the input
         current_input = input(Fore.YELLOW + '?: ' + Style.RESET_ALL)

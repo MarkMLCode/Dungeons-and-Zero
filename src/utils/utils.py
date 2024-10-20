@@ -103,7 +103,7 @@ def read_json(filename):
             with open(filename, 'r', encoding="utf-8") as file:
                 return json.load(file)
         except json.JSONDecodeError as e:
-            print(f"ERROR: Error decoding JSON from '{filename}'. File might be empty or corrupted. Exception: {e}")
+            print_log(f"WARNING: Error decoding JSON from '{filename}'. File might be empty or corrupted (can retry after a bit). Exception: {e}", is_warning=True)
             exception = e
         
         time.sleep(0.1)

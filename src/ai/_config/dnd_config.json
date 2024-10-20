@@ -14,6 +14,6 @@
     "max_allies": 3,
     "max_opponents": 4,
     "max_additional_opponents": 5,
-    "win_count": 24,
+    "win_count": 25,
     "lose_count": 18
 }
